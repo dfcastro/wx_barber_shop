@@ -25,7 +25,7 @@
                     </div>
 
                     {{-- Aqui vamos colocar nosso componente Livewire para listar os serviços --}}
-                    @livewire('admin.services.service-list', ['services' => $services])
+                  @livewire('admin.services.service-list')
 
                 </div>
             </div>

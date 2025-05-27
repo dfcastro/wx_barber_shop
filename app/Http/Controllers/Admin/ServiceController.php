@@ -71,10 +71,7 @@ class ServiceController extends Controller
      */
     public function destroy(Service $service) // Route Model Binding
     {
-        // O Service já é injetado graças ao Route Model Binding
-        $serviceName = $service->name; // Pega o nome antes de deletar, para a mensagem
         $service->delete();
-
-        return redirect()->route('admin.services.index')->with('success', "Serviço '{$serviceName}' deletado com sucesso via Controller!");
+        return redirect()->route('admin.services.index')->with('success', 'Serviço excluído com sucesso (via Controller)!');
     }
 }

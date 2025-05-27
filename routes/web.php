@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\ServiceController; 
+use App\Http\Controllers\BookingController; 
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -44,6 +46,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Você também poderia usar Route::resource se preferir uma sintaxe mais curta:
     // Route::resource('services', ServiceController::class);
     // Apenas certifique-se que os nomes das rotas e métodos do controller batam
+});
+
+// Rota para a página de agendamento - requer autenticação
+Route::middleware(['auth'])->group(function () {
+    Route::get('/agendar', [BookingController::class, 'index'])->name('booking.index');
+    // Futuramente, aqui também pode ir a rota POST para salvar o agendamento
 });
 
 require __DIR__.'/auth.php';

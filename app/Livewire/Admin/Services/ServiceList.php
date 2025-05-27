@@ -2,39 +2,45 @@
 
 namespace App\Livewire\Admin\Services;
 
-use App\Models\Service; // Importe o Model Service
+use App\Models\Service;
 use Livewire\Component;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection; // Ainda podemos usar para type hint
 
 class ServiceList extends Component
 {
-    public Collection $services;
+    public Collection $services; // Continuaremos usando esta propriedade
+    public ?Service $serviceToDelete = null; // Para o modal de confirmação
 
-    public function mount(Collection $services)
+    // O método mount não é mais necessário para receber $services
+    // public function mount(Collection $services)
+    // {
+    //     $this->services = $services;
+    // }
+
+    public function confirmDeletion(Service $service)
     {
-        $this->services = $services;
+        $this->serviceToDelete = $service;
     }
 
-    // NOVO MÉTODO PARA DELETAR O SERVIÇO
-    public function deleteService($serviceId)
+    public function deleteService()
     {
-        $service = Service::find($serviceId);
-
-        if ($service) {
-            $service->delete();
-            session()->flash('success', 'Serviço deletado com sucesso!');
-            // Atualiza a lista de serviços após a exclusão
-            // Isso é importante porque a coleção original foi passada via mount
-            // e não será automaticamente atualizada apenas pela exclusão no BD.
-            $this->services = Service::orderBy('name')->get();
-        } else {
-            session()->flash('error', 'Erro ao tentar deletar o serviço. Não encontrado.');
+        if ($this->serviceToDelete) {
+            $this->serviceToDelete->delete();
+            session()->flash('success', 'Serviço excluído com sucesso!');
+            $this->serviceToDelete = null; // Reseta para fechar o modal
+            // A lista será atualizada no próximo render()
         }
-        // O Livewire irá re-renderizar o componente automaticamente após a execução deste método.
+    }
+
+    public function cancelDelete()
+    {
+        $this->serviceToDelete = null;
     }
 
     public function render()
     {
+        // Busca os serviços aqui, toda vez que o componente renderizar
+        $this->services = Service::orderBy('name')->get();
         return view('livewire.admin.services.service-list');
     }
 }
