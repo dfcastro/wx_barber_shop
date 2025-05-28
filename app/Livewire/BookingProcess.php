@@ -10,6 +10,7 @@ use Carbon\Carbon; // Para manipulação de datas e horas
 use Carbon\CarbonPeriod; // Para gerar períodos de tempo
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Models\BlockedPeriod;
 
 class BookingProcess extends Component
 {
@@ -44,7 +45,6 @@ class BookingProcess extends Component
 
     // app/Livewire/BookingProcess.php
     // ... (outras propriedades e métodos mount, updated*, etc.) ...
-
     public function loadAvailableTimeSlots()
     {
         $this->availableTimeSlots = [];
@@ -69,6 +69,7 @@ class BookingProcess extends Component
         $dayOfWeek = $date->dayOfWeekIso;
         if ($dayOfWeek < Carbon::TUESDAY || $dayOfWeek > Carbon::SATURDAY) {
             Log::info("SAINDO de loadAvailableTimeSlots: Barbearia fechada no dia da semana {$dayOfWeek} para data {$date->toDateString()}.");
+            $this->availableTimeSlots = []; // Garante que está vazio
             return;
         }
 
@@ -77,15 +78,25 @@ class BookingProcess extends Component
         $lunchStartTime = $date->copy()->hour(12)->minute(0)->second(0);
         $lunchEndTime = $date->copy()->hour(13)->minute(0)->second(0);
 
+        // Busca agendamentos existentes
         $queryDateString = $date->toDateString();
         Log::info("Consultando agendamentos existentes para a data: " . $queryDateString);
         $existingAppointments = Appointment::whereDate('appointment_time', $queryDateString)
             ->whereIn('status', ['pendente', 'confirmado'])
             ->get();
-        Log::info("Encontrados " . $existingAppointments->count() . " agendamentos existentes para " . $queryDateString . ":");
-        foreach ($existingAppointments as $app) {
-            Log::info(" - Agendamento existente: ID {$app->id} às " . Carbon::parse($app->appointment_time)->format('H:i'));
-        }
+        Log::info("Encontrados " . $existingAppointments->count() . " agendamentos existentes para " . $queryDateString);
+        // foreach ($existingAppointments as $app) { Log::info(" - Agendamento existente: ID {$app->id} às " . Carbon::parse($app->appointment_time)->format('H:i')); }
+
+        // Busca períodos bloqueados que se sobrepõem com o dia selecionado
+        Log::info("Consultando períodos bloqueados para a data: " . $queryDateString);
+        $blockedPeriods = BlockedPeriod::where(function ($query) use ($date) {
+            $query->where('start_datetime', '<=', $date->copy()->endOfDay()) // Bloqueio começa antes ou no fim do dia selecionado
+                ->where('end_datetime', '>=', $date->copy()->startOfDay()); // Bloqueio termina depois ou no início do dia selecionado
+        })
+            ->get();
+        Log::info("Encontrados " . $blockedPeriods->count() . " períodos bloqueados relevantes para " . $queryDateString);
+        // foreach ($blockedPeriods as $bp) { Log::info(" - Período bloqueado: ID {$bp->id} de {$bp->start_datetime} até {$bp->end_datetime}"); }
+
 
         $timeSlots = [];
         $currentTime = $openingTime->copy();
@@ -99,13 +110,12 @@ class BookingProcess extends Component
 
             // Log::info("Verificando slot potencial: {$slotStart->format('H:i')} - {$slotEnd->format('H:i')}");
 
+            // 1. Verifica se o slot está DENTRO do horário de almoço
             $slotInLunch = ($slotStart->lt($lunchEndTime) && $slotEnd->gt($lunchStartTime));
-            // if ($slotInLunch) {
-            //     Log::info(" -> Slot EM CONFLITO com almoço.");
-            // }
 
+            // 2. Verifica se o slot conflita com agendamentos existentes
             $slotConflictsWithExisting = false;
-            if (!$slotInLunch) { // Só checa conflito com existentes se não estiver no almoço
+            if (!$slotInLunch) {
                 foreach ($existingAppointments as $existingAppointment) {
                     $existingStart = Carbon::parse($existingAppointment->appointment_time);
                     $existingServiceForApp = Service::find($existingAppointment->service_id);
@@ -113,14 +123,26 @@ class BookingProcess extends Component
                     $existingEnd = $existingStart->copy()->addMinutes($existingServiceForApp->duration_minutes);
 
                     if ($slotStart->lt($existingEnd) && $slotEnd->gt($existingStart)) {
-                        // Log::info(" -> Slot EM CONFLITO com agendamento existente ID {$existingAppointment->id} ({$existingStart->format('H:i')}-{$existingEnd->format('H:i')}).");
                         $slotConflictsWithExisting = true;
                         break;
                     }
                 }
             }
 
-            if (!$slotInLunch && !$slotConflictsWithExisting) {
+            // 3. Verifica se o slot conflita com períodos bloqueados
+            $slotConflictsWithBlockedPeriod = false;
+            if (!$slotInLunch && !$slotConflictsWithExisting) { // Só checa se ainda for um candidato válido
+                foreach ($blockedPeriods as $blockedPeriod) {
+                    // Verifica sobreposição: (StartA < EndB_blocked) and (EndA > StartB_blocked)
+                    if ($slotStart->lt($blockedPeriod->end_datetime) && $slotEnd->gt($blockedPeriod->start_datetime)) {
+                        // Log::info(" -> Slot EM CONFLITO com período bloqueado ID {$blockedPeriod->id} ({$blockedPeriod->start_datetime->format('H:i')}-{$blockedPeriod->end_datetime->format('H:i')}).");
+                        $slotConflictsWithBlockedPeriod = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$slotInLunch && !$slotConflictsWithExisting && !$slotConflictsWithBlockedPeriod) {
                 // Log::info(" -> Slot ADICIONADO: {$slotStart->format('H:i')}");
                 $timeSlots[] = $slotStart->format('H:i');
             }
@@ -128,10 +150,12 @@ class BookingProcess extends Component
             $currentTime->addMinutes($stepMinutes);
         }
         $this->availableTimeSlots = array_unique($timeSlots);
-        Log::info("Slots disponíveis calculados para {$date->toDateString()}: " . implode(', ', $this->availableTimeSlots));
+        Log::info("Slots disponíveis calculados para {$date->toDateString()}: " . (!empty($this->availableTimeSlots) ? implode(', ', $this->availableTimeSlots) : 'Nenhum'));
         Log::info("loadAvailableTimeSlots FINALIZADO para data: {$this->selectedDate}");
         Log::info("----------------------------------------------------");
     }
+
+
     // ... (render e outros métodos) ...
 
     public function selectTimeSlot($timeSlot)
