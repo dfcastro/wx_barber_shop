@@ -24,18 +24,23 @@
                     <x-nav-link :href="route('admin.appointments.index')" :active="request()->routeIs('admin.appointments.index')">
                         {{ __('Agendamentos') }}
                     </x-nav-link>
-                    @endif
-
-                    {{-- Adicione aqui outros links para clientes logados, se houver --}}
-                    {{-- Ex: "Meus Agendamentos" para clientes --}}
-                    {{-- @if (!Auth::user()->is_admin)
-                            <x-nav-link :href="route('client.appointments.index')" :active="request()->routeIs('client.appointments.index')">
-                                {{ __('Meus Agendamentos') }}
-                    </x-nav-link>
-                    @endif --}}
                     <x-nav-link :href="route('admin.blocked-periods.index')" :active="request()->routeIs('admin.blocked-periods.*')">
                         {{ __('Bloqueios/Folgas') }}
                     </x-nav-link>
+                    @else
+
+                    {{-- Adicione aqui outros links para clientes logados, se houver --}}
+                    {{-- Ex: "Meus Agendamentos" para clientes --}}
+                    {{-- @if (!Auth::user()->is_admin)--}}
+                    <x-nav-link :href="route('booking.index')" :active="request()->routeIs('booking.index')">
+                        {{ __('Agendar Horário') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('client.appointments.index')" :active="request()->routeIs('client.appointments.index')">
+                        {{ __('Meus Agendamentos') }}
+                    </x-nav-link>
+
+                    @endif
+
 
                     @else {{-- Links para convidados (não autenticados) --}}
                     <x-nav-link :href="route('login')">
@@ -96,6 +101,7 @@
         </div>
     </div>
 
+    {{-- menu responsivo --}}
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         @auth
         <div class="pt-2 pb-3 space-y-1">
@@ -114,14 +120,17 @@
             <x-responsive-nav-link :href="route('admin.blocked-periods.index')" :active="request()->routeIs('admin.blocked-periods.*')">
                 {{ __('Bloqueios/Folgas') }}
             </x-responsive-nav-link>
-            @endif
+            @else
 
             {{-- Adicione aqui outros links responsivos para clientes logados, se houver --}}
-            {{-- @if (!Auth::user()->is_admin)
-                    <x-responsive-nav-link :href="route('client.appointments.index')" :active="request()->routeIs('client.appointments.index')">
-                        {{ __('Meus Agendamentos') }}
+            {{-- @if (!Auth::user()->is_admin)--}}
+                     <x-responsive-nav-link :href="route('booking.index')" :active="request()->routeIs('booking.index')">
+                {{ __('Agendar Horário') }}
             </x-responsive-nav-link>
-            @endif --}}
+            <x-responsive-nav-link :href="route('client.appointments.index')" :active="request()->routeIs('client.appointments.index')">
+                {{ __('Meus Agendamentos') }}
+            </x-responsive-nav-link>
+            @endif 
         </div>
 
         <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">

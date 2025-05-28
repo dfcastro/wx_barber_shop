@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\Admin\AppointmentManagementController;
 use App\Http\Controllers\Admin\BlockedPeriodController;
+use App\Http\Controllers\ClientAppointmentController; 
 
 
 Route::get('/', function () {
@@ -61,12 +62,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('blocked-periods', BlockedPeriodController::class)->except(['show']);
     // Usamos except(['show']) porque geralmente não precisamos de uma página separada para "mostrar um único período bloqueado".
     // A listagem (index), criação (create/store) e edição (edit/update/destroy) são suficientes.
+
+    
 });
 
 // Rota para a página de agendamento - requer autenticação
 Route::middleware(['auth'])->group(function () {
     Route::get('/agendar', [BookingController::class, 'index'])->name('booking.index');
     // Futuramente, aqui também pode ir a rota POST para salvar o agendamento
+    //meus agendamentos cliente
+    Route::get('/meus-agendamentos', [ClientAppointmentController::class, 'index'])->name('client.appointments.index');
 });
 
 require __DIR__ . '/auth.php';
