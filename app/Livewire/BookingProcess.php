@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire; // Ou App\Http\Livewire se sua estrutura for mais antiga
+namespace App\Livewire;
 
 use App\Models\Service;
 use App\Models\Appointment;
@@ -10,41 +10,43 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\BookingRequestedToClient;
 use App\Mail\NewBookingNotificationToAdmin;
 use Livewire\Component;
-use Illuminate\Support\Collection as IlluminateCollection; // Renomeado para evitar conflito se houver outra 'Collection'
+use Illuminate\Support\Collection as IlluminateCollection;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class BookingProcess extends Component
 {
-    // Defina o limite máximo de agendamentos futuros ativos por cliente
-    const MAX_ACTIVE_APPOINTMENTS = 4; // << Altere este valor conforme necessário
+    const MAX_ACTIVE_APPOINTMENTS = 4;
 
-    public IlluminateCollection $services; // Coleção de todos os serviços disponíveis
-    public $selectedServiceId = null;     // ID do serviço selecionado pelo usuário
-    public $selectedDate = null;          // Data selecionada pelo usuário (ex: '2025-12-31')
-    public array $availableTimeSlots = []; // Array de horários disponíveis
-    public $selectedTimeSlot = null;      // Horário específico selecionado
-
-    public bool $userHasReachedMaxAppointments = false; // Para feedback no frontend
+    public IlluminateCollection $services;
+    public $selectedServiceId = null;
+    public ?Service $selectedService = null; // << NOVA PROPRIEDADE: Armazena a instância do serviço
+    public $selectedDate = null;
+    public array $availableTimeSlots = [];
+    public $selectedTimeSlot = null;
+    public bool $userHasReachedMaxAppointments = false;
 
     public function mount()
     {
         $this->services = Service::orderBy('name')->get();
-        if (!$this->selectedDate) { // Define a data apenas se não estiver já definida (útil para re-renderizações)
+        if (!$this->selectedDate) { // Se não vier de um estado anterior
             $this->selectedDate = now()->format('Y-m-d');
         }
-        $this->checkAppointmentLimit(); // Verifica o limite ao carregar
-        $this->loadAvailableTimeSlots(); // Carrega os slots para a data inicial e serviço (se houver)
+
+        // Se selectedServiceId já estiver definido (ex: estado anterior), carregar o selectedService
+        if ($this->selectedServiceId && !$this->selectedService) {
+            $this->selectedService = Service::find($this->selectedServiceId);
+        }
+
+        $this->checkAppointmentLimit();
+        $this->loadAvailableTimeSlots(); // Carrega slots para data/serviço inicial (se houver)
     }
 
-    /**
-     * Verifica se o usuário atingiu o limite de agendamentos e atualiza a propriedade.
-     */
     public function checkAppointmentLimit()
     {
         if (Auth::check()) {
             $activeAppointmentsCount = Appointment::where('user_id', Auth::id())
-                ->where('appointment_time', '>=', Carbon::now()) // Agendamentos futuros a partir de agora
+                ->where('appointment_time', '>=', Carbon::now())
                 ->whereIn('status', ['pendente', 'confirmado'])
                 ->count();
             $this->userHasReachedMaxAppointments = $activeAppointmentsCount >= self::MAX_ACTIVE_APPOINTMENTS;
@@ -53,44 +55,64 @@ class BookingProcess extends Component
         }
     }
 
+    // ATUALIZADO: updatedSelectedServiceId
     public function updatedSelectedServiceId($serviceId)
     {
-        $this->selectedTimeSlot = null; // Reseta horário ao mudar serviço
-        $this->availableTimeSlots = []; // Limpa slots para forçar recálculo ou mostrar carregando
+        $this->selectedTimeSlot = null;
+        $this->availableTimeSlots = []; // Limpa os slots antigos
+
         if ($serviceId) {
-            $this->loadAvailableTimeSlots();
+            $this->selectedService = Service::find($serviceId); // Carrega a instância do serviço aqui
+            if (!$this->selectedService) {
+                Log::warning("Serviço com ID {$serviceId} não encontrado ao tentar atualizar selectedServiceId.");
+                // Opcional: exibir uma mensagem de erro para o usuário ou resetar o selectedServiceId
+                $this->selectedServiceId = null; // Reseta o ID se o serviço não for encontrado
+            }
+        } else {
+            $this->selectedService = null;
         }
+
+        // Recarrega os horários disponíveis com o novo serviço (ou nenhum, se $serviceId for nulo)
+        $this->loadAvailableTimeSlots();
     }
 
     public function updatedSelectedDate($date)
     {
-        Log::info(">>> updatedSelectedDate HOOK EXECUTADO. Nova data selecionada: " . $date . ". Valor ATUAL de \$this->selectedDate: " . $this->selectedDate);
-        $this->selectedTimeSlot = null; // Reseta horário ao mudar data
-        $this->availableTimeSlots = []; // Limpa slots para forçar recálculo ou mostrar carregando
+        Log::info(">>> updatedSelectedDate HOOK EXECUTADO. Nova data selecionada: " . $date);
+        $this->selectedTimeSlot = null;
+        $this->availableTimeSlots = [];
         if ($date) {
             $this->loadAvailableTimeSlots();
         }
         Log::info(">>> updatedSelectedDate HOOK FINALIZADO. \$this->selectedDate AGORA é: " . $this->selectedDate);
     }
 
+    // ATUALIZADO: loadAvailableTimeSlots
     public function loadAvailableTimeSlots()
     {
-        $this->availableTimeSlots = []; // Sempre limpa antes de recalcular
+        $this->availableTimeSlots = [];
         Log::info("----------------------------------------------------");
-        Log::info("loadAvailableTimeSlots INICIADO para data: {$this->selectedDate}, serviço ID: {$this->selectedServiceId}");
+        Log::info("loadAvailableTimeSlots INICIADO para data: {$this->selectedDate}, Serviço: " . ($this->selectedService ? $this->selectedService->name . " (ID: " . $this->selectedService->id . ")" : 'Nenhum'));
 
-        if (!$this->selectedServiceId || !$this->selectedDate) {
-            Log::info("SAINDO de loadAvailableTimeSlots: Serviço ID ou Data não definidos.");
-            return;
+        // Utiliza a propriedade $this->selectedService que já foi carregada
+        if (!$this->selectedService || !$this->selectedDate) {
+            Log::info("SAINDO de loadAvailableTimeSlots: Serviço ou Data não definidos.");
+            // Se selectedServiceId está definido mas selectedService não (pode acontecer em re-renderizações complexas)
+            // tenta carregar novamente.
+            if ($this->selectedServiceId && !$this->selectedService) {
+                Log::warning("selectedService é nulo, mas selectedServiceId (" . $this->selectedServiceId . ") está definido. Tentando recarregar o serviço.");
+                $this->selectedService = Service::find($this->selectedServiceId);
+                if (!$this->selectedService) {
+                     Log::error("Falha ao recarregar o serviço com ID " . $this->selectedServiceId . ". Abortando cálculo de slots.");
+                     return; // Ainda não pode prosseguir se o serviço não for encontrado
+                }
+                 Log::info("Serviço recarregado: " . $this->selectedService->name);
+            } else if (!$this->selectedService) {
+                return; // Se $this->selectedServiceId também for nulo, ou se o serviço não foi encontrado.
+            }
         }
 
-        $selectedService = Service::find($this->selectedServiceId);
-        if (!$selectedService) {
-            Log::info("SAINDO de loadAvailableTimeSlots: Serviço com ID {$this->selectedServiceId} não encontrado.");
-            return;
-        }
-
-        $serviceDuration = $selectedService->duration_minutes;
+        $serviceDuration = $this->selectedService->duration_minutes;
         $date = Carbon::parse($this->selectedDate);
         $now = Carbon::now();
         Log::info("Data parseada para cálculo de slots: " . $date->toDateString() . ". Agora é: " . $now->toDateTimeString());
@@ -101,80 +123,107 @@ class BookingProcess extends Component
         }
 
         $dayOfWeek = $date->dayOfWeekIso; // Segunda = 1, ..., Domingo = 7
-        if ($dayOfWeek < Carbon::TUESDAY || $dayOfWeek > Carbon::SATURDAY) { // Terça (2) a Sábado (6)
+        // Considerando que a barbearia funciona de Terça (2) a Sábado (6)
+        if ($dayOfWeek < Carbon::TUESDAY || $dayOfWeek > Carbon::SATURDAY) {
             Log::info("SAINDO de loadAvailableTimeSlots: Barbearia fechada no dia da semana {$dayOfWeek} para data {$date->toDateString()}.");
             return;
         }
 
+        // Horários de funcionamento e almoço (poderiam vir de configurações no futuro)
         $openingTime = $date->copy()->hour(8)->minute(0)->second(0);
         $closingTime = $date->copy()->hour(18)->minute(0)->second(0);
         $lunchStartTime = $date->copy()->hour(12)->minute(0)->second(0);
         $lunchEndTime = $date->copy()->hour(13)->minute(0)->second(0);
 
         $queryDateString = $date->toDateString();
+
+        // Otimização: Buscar agendamentos e seus serviços (apenas a duração) uma vez para o dia.
         $existingAppointments = Appointment::whereDate('appointment_time', $queryDateString)
                                           ->whereIn('status', ['pendente', 'confirmado'])
+                                          ->with('service:id,duration_minutes') // Eager load service duration
                                           ->get();
         Log::info("Encontrados " . $existingAppointments->count() . " agendamentos existentes para " . $queryDateString);
 
-        $blockedPeriods = BlockedPeriod::where(function ($query) use ($date) {
+        $blockedPeriodsForDay = BlockedPeriod::where(function ($query) use ($date) {
                                             $query->where('start_datetime', '<=', $date->copy()->endOfDay())
                                                   ->where('end_datetime', '>=', $date->copy()->startOfDay());
                                         })
                                         ->get();
-        Log::info("Encontrados " . $blockedPeriods->count() . " períodos bloqueados relevantes para " . $queryDateString);
+        Log::info("Encontrados " . $blockedPeriodsForDay->count() . " períodos bloqueados relevantes para " . $queryDateString);
 
         $timeSlots = [];
         $currentTime = $openingTime->copy();
+        // Intervalo entre os possíveis inícios de slots. Ex: 08:00, 08:15, 08:30...
+        // Ajuste conforme a granularidade desejada para a escolha do cliente.
         $stepMinutes = 15;
 
-        Log::info("Iniciando geração de slots de {$openingTime->format('H:i')} até {$closingTime->format('H:i')} com passo de {$stepMinutes}min e duração de serviço de {$serviceDuration}min.");
+        Log::info("Iniciando geração de slots de {$openingTime->format('H:i')} até {$closingTime->format('H:i')} com passo de {$stepMinutes}min e duração do serviço selecionado de {$serviceDuration}min.");
 
         while ($currentTime->copy()->addMinutes($serviceDuration)->lte($closingTime)) {
             $slotStart = $currentTime->copy();
             $slotEnd = $currentTime->copy()->addMinutes($serviceDuration);
 
-            if ($date->isToday() && $slotStart->lt($now)) {
+            // 1. Se a data for hoje, não mostrar horários que já passaram (com uma pequena margem)
+            if ($date->isToday() && $slotStart->lt($now->copy()->subMinutes(1))) { // Subtrai 1 min para garantir que o slot atual/próximo possa ser pego
                 $currentTime->addMinutes($stepMinutes);
                 continue;
             }
 
+            // 2. Verificar conflito com horário de almoço
             $slotInLunch = ($slotStart->lt($lunchEndTime) && $slotEnd->gt($lunchStartTime));
+            if ($slotInLunch) {
+                // Se o início do slot cai no almoço, avançar para o fim do almoço
+                // Se o slot começa antes mas termina durante ou depois do almoço, também é conflito.
+                // A lógica atual já impede que o slot seja adicionado, mas podemos otimizar o avanço:
+                if ($currentTime->lt($lunchEndTime)) {
+                     $currentTime = $lunchEndTime->copy(); // Pula $currentTime para o fim do almoço
+                } else {
+                    $currentTime->addMinutes($stepMinutes);
+                }
+                continue;
+            }
+
+            // 3. Verificar conflito com agendamentos existentes
             $slotConflictsWithExisting = false;
-            if (!$slotInLunch) {
-                foreach ($existingAppointments as $existingAppointment) {
-                    $existingStart = Carbon::parse($existingAppointment->appointment_time);
-                    $existingServiceForApp = Service::find($existingAppointment->service_id);
-                    if (!$existingServiceForApp) continue;
-                    $existingEnd = $existingStart->copy()->addMinutes($existingServiceForApp->duration_minutes);
-                    if ($slotStart->lt($existingEnd) && $slotEnd->gt($existingStart)) {
-                        $slotConflictsWithExisting = true;
-                        break;
-                    }
+            foreach ($existingAppointments as $existingAppointment) {
+                $existingStart = Carbon::parse($existingAppointment->appointment_time);
+                $existingServiceDuration = $existingAppointment->service ? $existingAppointment->service->duration_minutes : 60; // Duração padrão caso o serviço não seja encontrado (improvável com eager loading)
+                $existingEnd = $existingStart->copy()->addMinutes($existingServiceDuration);
+
+                if ($slotStart->lt($existingEnd) && $slotEnd->gt($existingStart)) {
+                    $slotConflictsWithExisting = true;
+                    break;
                 }
             }
+            if ($slotConflictsWithExisting) {
+                $currentTime->addMinutes($stepMinutes);
+                continue;
+            }
 
+            // 4. Verificar conflito com períodos bloqueados
             $slotConflictsWithBlockedPeriod = false;
-            if (!$slotInLunch && !$slotConflictsWithExisting) {
-                foreach ($blockedPeriods as $blockedPeriod) {
-                    if ($slotStart->lt($blockedPeriod->end_datetime) && $slotEnd->gt($blockedPeriod->start_datetime)) {
-                        $slotConflictsWithBlockedPeriod = true;
-                        break;
-                    }
+            foreach ($blockedPeriodsForDay as $blockedPeriod) {
+                if ($slotStart->lt($blockedPeriod->end_datetime) && $slotEnd->gt($blockedPeriod->start_datetime)) {
+                    $slotConflictsWithBlockedPeriod = true;
+                    break;
                 }
             }
-
-            if (!$slotInLunch && !$slotConflictsWithExisting && !$slotConflictsWithBlockedPeriod) {
-                $timeSlots[] = $slotStart->format('H:i');
+            if ($slotConflictsWithBlockedPeriod) {
+                $currentTime->addMinutes($stepMinutes);
+                continue;
             }
-            
+
+            // Se passou por todas as verificações, o slot está disponível
+            $timeSlots[] = $slotStart->format('H:i');
             $currentTime->addMinutes($stepMinutes);
         }
-        $this->availableTimeSlots = array_unique($timeSlots);
+
+        $this->availableTimeSlots = $timeSlots; // array_unique removido, pois a lógica de incremento deve prevenir duplicatas
         Log::info("Slots disponíveis calculados para {$date->toDateString()}: " . (!empty($this->availableTimeSlots) ? implode(', ', $this->availableTimeSlots) : 'Nenhum'));
         Log::info("loadAvailableTimeSlots FINALIZADO para data: {$this->selectedDate}");
         Log::info("----------------------------------------------------");
     }
+
 
     public function selectTimeSlot($timeSlot)
     {
@@ -189,14 +238,14 @@ class BookingProcess extends Component
             return;
         }
 
-        // Re-verifica o limite ANTES de qualquer outra coisa
-        $this->checkAppointmentLimit(); // Garante que a propriedade está atualizada
+        $this->checkAppointmentLimit();
         if ($this->userHasReachedMaxAppointments) {
             session()->flash('error', 'Você atingiu o limite de ' . self::MAX_ACTIVE_APPOINTMENTS . ' agendamento(s) futuro(s) ativo(s). Por favor, aguarde a realização ou cancele um agendamento existente para marcar um novo.');
             return;
         }
 
-        if (!$this->selectedServiceId || !$this->selectedDate || !$this->selectedTimeSlot) {
+        // Validação dos dados selecionados (já deve estar usando $this->selectedService)
+        if (!$this->selectedService || !$this->selectedDate || !$this->selectedTimeSlot) {
             session()->flash('error', 'Por favor, selecione serviço, data e horário.');
             return;
         }
@@ -206,24 +255,23 @@ class BookingProcess extends Component
 
         if ($appointmentDateTime->lt($now->copy()->subMinutes(1))) {
             session()->flash('error', 'Não é possível agendar para um horário que já passou.');
-            $this->selectedTimeSlot = null;
-            $this->loadAvailableTimeSlots();
+            $this->selectedTimeSlot = null; // Limpa o slot para forçar nova seleção
+            $this->loadAvailableTimeSlots(); // Recarrega os slots
             return;
         }
         
-        // TODO: Adicionar verificação de condição de corrida (se o slot foi ocupado por outro usuário entre o load e o book)
-        // Isso pode envolver uma verificação final na base de dados antes do create.
+        // TODO: Prevenção de Condição de Corrida (discutido na próxima etapa se você quiser)
 
         $appointment = Appointment::create([
             'user_id' => $userId,
-            'service_id' => $this->selectedServiceId,
+            'service_id' => $this->selectedService->id, // Usa o ID do serviço da propriedade
             'appointment_time' => $appointmentDateTime,
             'status' => 'pendente',
         ]);
 
         try {
             Mail::to($appointment->user->email)->send(new BookingRequestedToClient($appointment));
-            $adminEmail = env('ADMIN_EMAIL_ADDRESS'); // ou config('mail.admin_address')
+            $adminEmail = config('mail.admin_address', env('ADMIN_EMAIL_ADDRESS', 'dfcastro@outlook.com.br'));
             if ($adminEmail) {
                 Mail::to($adminEmail)->send(new NewBookingNotificationToAdmin($appointment));
             } else {
@@ -232,21 +280,19 @@ class BookingProcess extends Component
             Log::info("E-mails de solicitação de agendamento enviados para o agendamento ID: {$appointment->id}.");
         } catch (\Exception $e) {
             Log::error('Erro ao enviar e-mail de novo agendamento ID ' . $appointment->id . ': ' . $e->getMessage());
+            // Considerar se deve ou não falhar o agendamento inteiro por causa do e-mail.
+            // Por enquanto, o agendamento é criado e o erro de e-mail é logado.
         }
 
         session()->flash('success', 'Seu agendamento para ' . $appointmentDateTime->format('d/m/Y') . ' às ' . $appointmentDateTime->format('H:i') . ' foi solicitado com sucesso! Aguarde a confirmação por e-mail.');
 
-        $this->selectedTimeSlot = null; // Limpa o horário selecionado
-        $this->loadAvailableTimeSlots(); // Recarrega os slots para a data/serviço atual
-        $this->checkAppointmentLimit(); // Re-verifica o limite para atualizar o estado do frontend
+        $this->selectedTimeSlot = null;
+        $this->loadAvailableTimeSlots();
+        $this->checkAppointmentLimit();
     }
 
     public function render()
     {
-        // Se for necessário garantir que o limite de agendamentos seja checado
-        // a cada renderização (ex: se o usuário abrir duas abas e cancelar em uma),
-        // pode-se chamar aqui. Mas pode ser um pouco excessivo.
-        // $this->checkAppointmentLimit(); 
         return view('livewire.booking-process');
     }
 }
