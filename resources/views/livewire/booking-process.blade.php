@@ -1,5 +1,28 @@
 {{-- resources/views/livewire/booking-process.blade.php --}}
 <div>
+<style>
+        .flatpickr-day.day-has-availability {
+            background: #cceeff !important; /* Um azul claro, por exemplo */
+            border-color: #99ddff !important;
+            font-weight: bold;
+            /* Ou adicione um ponto:
+            position: relative;
+            */
+        }
+        /* Exemplo de ponto:
+        .flatpickr-day.day-has-availability::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px;
+            height: 6px;
+            background-color: green;
+            border-radius: 50%;
+        }
+        */
+    </style>
     {{-- ... (mensagens de feedback e seleção de serviço como antes) ... --}}
     @if (session()->has('success'))
         <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 dark:text-green-300 dark:bg-green-900 dark:border-green-700 rounded"
@@ -48,51 +71,133 @@
     <div>
         {{-- ... (mensagens de feedback e seleção de serviço como antes) ... --}}
 
-        {{-- ETAPA 2: Selecionar Data com Calendário Interativo --}}
-        @if ($selectedServiceId)
-            <div class="mb-6 @if($userHasReachedMaxAppointments) opacity-50 pointer-events-none @endif" wire:ignore {{-- <<<
-                ADICIONADO AQUI: wire:ignore --}} x-data="{
-                     datepickerInstance: null, // Para guardar a instância do Flatpickr se precisar destruí-la
-                     initFlatpickr() {
-                         // Se uma instância já existir (improvável com wire:ignore, mas bom para robustez)
-                         if (this.datepickerInstance) {
-                             this.datepickerInstance.destroy();
-                         }
-                         this.datepickerInstance = flatpickr(this.$refs.datepicker, {
-                             altInput: true,
-                             altFormat: 'd/m/Y',    // Formato de EXIBIÇÃO PT-BR
-                             dateFormat: 'Y-m-d',   // Formato do VALOR INTERNO para Livewire
-                             minDate: 'today',
-                             defaultDate: this.$wire.get('selectedDate'),
-                             locale: 'pt',
-                             disable: [
-                                 function(date) {
-                                     // Desabilitar Domingos (0) e Segundas (1)
-                                     return (date.getDay() === 0 || date.getDay() === 1);
-                                 }
-                             ],
-                             onChange: (selectedDates, dateStr, instance) => {
-                                 this.$wire.set('selectedDate', dateStr);
-                             },
-                             onClose: (selectedDates, dateStr, instance) => {
-                                 // Pode reativar esta linha se o problema do campo selecionável voltar
-                                 // e se não causar o problema de não conseguir reabrir.
-                                 if (instance.altInput) {
-                                     instance.altInput.blur();
-                                 }
-                             }
-                         });
+       {{-- ETAPA 2: Selecionar Data com Calendário Interativo --}}
+       @if ($selectedServiceId)
+    <div class="mb-6 @if($userHasReachedMaxAppointments) opacity-50 pointer-events-none @endif"
+         wire:ignore
+         x-data="{
+             datepickerInstance: null,
+             highlightedDays: [],
+             isLoadingCalendarHighlights: false,
+
+             async updateCalendarHighlights(year, month) {
+                 if (!this.$wire.get('selectedServiceId')) {
+                     this.highlightedDays = [];
+                     if (this.datepickerInstance) this.datepickerInstance.redraw();
+                     return;
+                 }
+                 this.isLoadingCalendarHighlights = true;
+                 try {
+                     // Mês em JS é 0-11, no PHP é 1-12. O método Livewire espera 1-12.
+                     this.highlightedDays = await this.$wire.getCalendarAvailability(year, month + 1);
+                 } catch (error) {
+                     console.error('Erro ao buscar disponibilidade do calendário:', error);
+                     this.highlightedDays = [];
+                 } finally {
+                     this.isLoadingCalendarHighlights = false;
+                     if (this.datepickerInstance) {
+                         // Importante: Verificar se a instância ainda existe antes de chamar redraw
+                         this.datepickerInstance.redraw();
                      }
-                 }" x-init="initFlatpickr()">
-                <label for="date-flatpickr" class="block text-sm font-medium text-gray-700 dark:text-gray-400">2. Escolha a
-                    Data:</label>
-                <input x-ref="datepicker" type="text" id="date-flatpickr"
-                    class="mt-1 block w-full py-2 px-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="DD/MM/AAAA" wire:loading.attr="disabled" wire:target="selectedDate, loadAvailableTimeSlots"
-                    @if($userHasReachedMaxAppointments) disabled @endif />
-                @error('selectedDate') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                 }
+             },
+
+             initFlatpickr() {
+                 if (this.datepickerInstance) {
+                     this.datepickerInstance.destroy();
+                 }
+                 
+                 // Garante que a data inicial para o Flatpickr seja uma string válida ou null
+                 let initialDate = this.$wire.get('selectedDate');
+                 if (initialDate && typeof initialDate === 'string' && initialDate.trim() !== '') {
+                     // Flatpickr lida bem com 'Y-m-d'
+                 } else {
+                     initialDate = null; // Ou defina para 'today' se preferir que sempre haja uma data
+                 }
+
+                 this.datepickerInstance = flatpickr(this.$refs.datepicker, {
+                     altInput: true,
+                     altFormat: 'd/m/Y',
+                     dateFormat: 'Y-m-d',
+                     minDate: 'today',
+                     defaultDate: initialDate, // Usar a data inicial tratada
+                     locale: 'pt',
+                     disable: [
+                         function(date) {
+                             return (date.getDay() === 0 || date.getDay() === 1);
+                         }
+                     ],
+                     onReady: (selectedDates, dateStr, instance) => {
+                         const currentMonth = instance.currentMonth; // 0-11
+                         const currentYear = instance.currentYear;
+                         if (typeof currentMonth === 'number' && typeof currentYear === 'number') {
+                            this.updateCalendarHighlights(currentYear, currentMonth);
+                         } else {
+                            // Fallback se instance.currentMonth/Year não estiverem disponíveis imediatamente
+                            const now = new Date();
+                            this.updateCalendarHighlights(now.getFullYear(), now.getMonth());
+                         }
+                     },
+                     onMonthChange: (selectedDates, dateStr, instance) => {
+                         this.updateCalendarHighlights(instance.currentYear, instance.currentMonth);
+                     },
+                     onYearChange: (selectedDates, dateStr, instance) => {
+                         this.updateCalendarHighlights(instance.currentYear, instance.currentMonth);
+                     },
+                     onDayCreate: (dObj, dStr, fp, dayElem) => {
+                         // Adicionar uma verificação para garantir que dObj é um objeto Date válido
+                         if (dObj instanceof Date && !isNaN(dObj)) {
+                             const currentDayFormatted = fp.formatDate(dObj, 'Y-m-d');
+                             if (this.highlightedDays && this.highlightedDays.includes(currentDayFormatted)) {
+                                 dayElem.classList.add('day-has-availability');
+                             } else {
+                                 dayElem.classList.remove('day-has-availability');
+                             }
+                         }
+                     },
+                     onChange: (selectedDates, dateStr, instance) => {
+                         this.$wire.set('selectedDate', dateStr);
+                     },
+                     onClose: (selectedDates, dateStr, instance) => {
+                         if (instance.altInput) {
+                             instance.altInput.blur();
+                         }
+                     }
+                 });
+             }
+         }"
+         x-init="initFlatpickr(); $watch('$wire.selectedServiceId', (newServiceId) => {
+            if (datepickerInstance) {
+                const currentYear = datepickerInstance.currentYear;
+                const currentMonth = datepickerInstance.currentMonth; // Mês é 0-11
+                if (typeof currentMonth === 'number' && typeof currentYear === 'number') {
+                    updateCalendarHighlights(currentYear, currentMonth);
+                }
+            }
+         })"
+         >
+            {{-- ... (input e label como antes) ... --}}
+            <label for="date-flatpickr" class="block text-sm font-medium text-gray-700 dark:text-gray-400">2. Escolha a Data:</label>
+            <div class="relative">
+                <input x-ref="datepicker"
+                       type="text"
+                       id="date-flatpickr"
+                       class="mt-1 block w-full py-2 px-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                       placeholder="DD/MM/AAAA"
+                       />
+                <div x-show="isLoadingCalendarHighlights" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none z-10">
+                    <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
             </div>
-        @endif
+            @error('selectedDate') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+        </div>
+    @endif
+    {{-- ... (resto da view) ... --}}
+
+
 
         {{-- ETAPA 3: Selecionar Horário (como na sua versão anterior com o spinner melhorado) --}}
         @if ($selectedServiceId && $selectedDate)
