@@ -2,32 +2,38 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+// use Illuminate\Contracts\Auth\MustVerifyEmail; // Se você não estiver usando, pode manter comentado
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+// Se você está usando MustVerifyEmail em algum lugar, descomente a interface e use a trait.
+// class User extends Authenticatable implements MustVerifyEmail
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable; // Adicione , \Illuminate\Auth\MustVerifyEmail; se implementar MustVerifyEmail
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'phone_number',
         'is_admin',
+        'provider_name',
+        'provider_id',
+        'provider_avatar',
+        'is_active', // << ADICIONADO
     ];
 
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -39,12 +45,19 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    protected function casts(): array
+    protected function casts(): array // Sintaxe para Laravel 10+
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'is_active' => 'boolean', // << ADICIONADO
         ];
+    }
+
+    // Relação com Agendamentos (se ainda não existir, adicione)
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
     }
 }

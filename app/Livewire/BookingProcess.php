@@ -371,8 +371,28 @@ class BookingProcess extends Component
         $userId = Auth::id();
         if (!$userId) {
             session()->flash('error', 'Você precisa estar logado para fazer um agendamento.');
+            // Você pode querer disparar um evento para abrir um modal de login aqui, se tiver um
+            // $this->dispatch('open-login-modal');
             return;
         }
+
+        // ===== INÍCIO DA NOVA VERIFICAÇÃO DE CONTA ATIVA =====
+        $user = Auth::user(); // Pega o usuário autenticado
+
+        // Certifique-se de que $user é uma instância do seu modelo User para acessar is_active
+        if ($user instanceof \App\Models\User && !$user->is_active) {
+            $userEmailForLog = $user->email; // Guarda para o log antes de deslogar
+            Auth::logout(); // Faz logout do usuário
+
+            // Limpa a sessão
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+
+            Log::info("[BookingProcess] Usuário {$userEmailForLog} tentou agendar com conta INATIVA e foi deslogado.");
+            session()->flash('error', 'Sua conta foi desativada. Por favor, entre em contato com o suporte para mais informações.');
+            return redirect()->route('login'); // Redireciona para a página de login
+        }
+        // ===== FIM DA NOVA VERIFICAÇÃO DE CONTA ATIVA =====
 
         $this->checkAppointmentLimit();
         if ($this->userHasReachedMaxAppointments) {
@@ -380,6 +400,7 @@ class BookingProcess extends Component
             return;
         }
 
+        // Validação dos dados selecionados (como antes)
         if (!$this->selectedService || !$this->selectedDate || !$this->selectedTimeSlot) {
             session()->flash('error', 'Por favor, selecione serviço, data e horário.');
             return;
@@ -388,6 +409,7 @@ class BookingProcess extends Component
         $appointmentDateTime = Carbon::parse($this->selectedDate . ' ' . $this->selectedTimeSlot);
         $now = Carbon::now();
 
+        // Verifica se o horário já passou (como antes)
         if ($appointmentDateTime->lt($now->copy()->subMinutes(1))) {
             session()->flash('error', 'Não é possível agendar para um horário que já passou.');
             $this->selectedTimeSlot = null;
@@ -395,56 +417,51 @@ class BookingProcess extends Component
             return;
         }
 
-        DB::beginTransaction(); // << INÍCIO DA TRANSAÇÃO
+        DB::beginTransaction();
 
         try {
-            // ETAPA CRÍTICA: Re-verificar a disponibilidade do slot AGORA
+            // Re-verificar a disponibilidade do slot (como antes)
             if (!$this->isSlotStillAvailable($appointmentDateTime, $this->selectedService->id, $this->selectedService->duration_minutes)) {
-                DB::rollBack(); // Reverte a transação se o slot não estiver disponível
+                DB::rollBack();
                 session()->flash('error', 'Desculpe, este horário foi agendado por outra pessoa ou tornou-se indisponível enquanto você confirmava. Por favor, escolha outro.');
-                $this->selectedTimeSlot = null; // Limpa o slot selecionado
-                $this->loadAvailableTimeSlots(); // Recarrega os horários disponíveis
+                $this->selectedTimeSlot = null;
+                $this->loadAvailableTimeSlots();
                 return;
             }
 
-            // Se o slot ainda estiver disponível, cria o agendamento
-            $appointment = Appointment::create([
+            // Cria o agendamento (como antes)
+            $appointment = \App\Models\Appointment::create([ // Use o namespace completo se Appointment não estiver importado no topo
                 'user_id' => $userId,
                 'service_id' => $this->selectedService->id,
                 'appointment_time' => $appointmentDateTime,
-                'status' => 'pendente', // Status inicial
+                'status' => 'pendente',
             ]);
 
-            // Envio de e-mails (considerar mover para Jobs em Fila para melhor performance percebida)
+            // Envio de e-mails em fila (como antes)
             try {
-                // Usando ->queue() para enfileirar os e-mails
-                Mail::to($appointment->user->email)->queue(new BookingRequestedToClient($appointment));
+                \Illuminate\Support\Facades\Mail::to($appointment->user->email)->queue(new \App\Mail\BookingRequestedToClient($appointment));
                 $adminEmail = config('mail.admin_address', env('ADMIN_EMAIL_ADDRESS'));
                 if ($adminEmail) {
-                    Mail::to($adminEmail)->queue(new NewBookingNotificationToAdmin($appointment));
+                    \Illuminate\Support\Facades\Mail::to($adminEmail)->queue(new \App\Mail\NewBookingNotificationToAdmin($appointment));
                 }
                 Log::info("E-mails de solicitação de agendamento ENFILEIRADOS para o agendamento ID: {$appointment->id}.");
             } catch (\Exception $e) {
                 Log::error('Erro ao ENFILEIRAR e-mail de novo agendamento ID ' . $appointment->id . ': ' . $e->getMessage());
-                // Não reverter a transação principal por falha no enfileiramento do e-mail,
-                // mas é importante logar e monitorar.
             }
 
-            DB::commit(); // << CONFIRMA A TRANSAÇÃO se tudo deu certo
+            DB::commit();
 
             session()->flash('success', 'Seu agendamento para ' . $appointmentDateTime->format('d/m/Y') . ' às ' . $appointmentDateTime->format('H:i') . ' foi solicitado com sucesso! Aguarde a confirmação por e-mail.');
 
-            // Limpa seleções e recarrega para o próximo agendamento ou para refletir o novo estado
+            // Limpa e recarrega (como antes)
             $this->selectedTimeSlot = null;
             $this->loadAvailableTimeSlots();
-            $this->checkAppointmentLimit(); // Re-verifica o limite
+            $this->checkAppointmentLimit();
 
         } catch (\Exception $e) {
-            DB::rollBack(); // Reverte a transação em caso de QUALQUER outra exceção durante o processo
+            DB::rollBack();
             Log::error('Erro crítico ao criar agendamento: ' . $e->getMessage() . ' Stack: ' . $e->getTraceAsString());
             session()->flash('error', 'Ocorreu um erro crítico ao tentar realizar seu agendamento. Por favor, tente novamente mais tarde.');
-
-            // Limpa seleções e recarrega em caso de erro também
             $this->selectedTimeSlot = null;
             $this->loadAvailableTimeSlots();
         }

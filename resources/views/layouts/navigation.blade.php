@@ -27,6 +27,9 @@
                     <x-nav-link :href="route('admin.blocked-periods.index')" :active="request()->routeIs('admin.blocked-periods.*')">
                         {{ __('Bloqueios/Folgas') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('admin.clients.index')" :active="request()->routeIs('admin.clients.index')">
+        {{ __('Clientes') }}
+    </x-nav-link>
                     @else
 
                     {{-- Adicione aqui outros links para clientes logados, se houver --}}
@@ -120,6 +123,9 @@
             <x-responsive-nav-link :href="route('admin.blocked-periods.index')" :active="request()->routeIs('admin.blocked-periods.*')">
                 {{ __('Bloqueios/Folgas') }}
             </x-responsive-nav-link>
+            <x-nav-link :href="route('admin.clients.index')" :active="request()->routeIs('admin.clients.index')">
+        {{ __('Clientes') }}
+    </x-nav-link>
             @else
 
             {{-- Adicione aqui outros links responsivos para clientes logados, se houver --}}

@@ -9,20 +9,22 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::create('users', function (Blueprint $table) {
-            $table->id(); // Coluna ID auto-incremento e chave primária
-            $table->string('name'); // Nome do usuário
-            $table->string('email')->unique(); // Email único
-            $table->timestamp('email_verified_at')->nullable(); // Para verificação de email
-            $table->string('password'); // Senha (será armazenada com hash)
-            $table->boolean('is_admin')->default(false); // Para identificar administradores
-            $table->rememberToken(); // Para funcionalidade "lembrar-me"
-            $table->timestamps(); // Colunas created_at e updated_at
-        });
-    }
-
+   // Em database/migrations/0001_01_01_000000_create_users_table.php
+public function up(): void
+{
+    Schema::create('users', function (Blueprint $table) {
+        $table->id();
+        $table->string('name');
+        $table->string('email')->unique();
+        $table->timestamp('email_verified_at')->nullable();
+        $table->string('password');
+        $table->string('phone_number')->nullable(); // << VERIFIQUE SE ESTA LINHA EXISTE E É 'phone_number'
+        $table->boolean('is_admin')->default(false);
+        // ... outras colunas como is_active, provider_name, provider_id ...
+        $table->rememberToken();
+        $table->timestamps();
+    });
+}
     /**
      * Reverse the migrations.
      */

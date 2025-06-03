@@ -47,6 +47,19 @@
             @endif
         </div>
 
+        {{-- ADICIONAR CAMPO DE NÚMERO DE TELEFONE AQUI --}}
+        <div class="mt-4">
+            <x-input-label for="phone_number" :value="__('Phone Number')" />
+            <x-text-input id="phone_number" name="phone_number" type="text" class="mt-1 block w-full" :value="old('phone_number', $user->phone_number)" />
+            {{-- Removi 'required' daqui para permitir que o usuário salve o perfil mesmo que não queira adicionar/mudar o telefone,
+                 A obrigatoriedade virá do middleware ou da mensagem para completar o cadastro.
+                 Mas se você quiser que SEJA SEMPRE OBRIGATÓRIO ao editar o perfil, adicione 'required' de volta.
+                 Considerando o fluxo atual, o middleware já força o preenchimento se estiver vazio. --}}
+            <x-input-error class="mt-2" :messages="$errors->get('phone_number')" />
+        </div>
+        {{-- FIM DO CAMPO DE NÚMERO DE TELEFONE --}}
+
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User; // Adicione esta linha para importar o modelo User
 
 class LoginRequest extends FormRequest
 {
@@ -22,7 +23,7 @@ class LoginRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
      */
     public function rules(): array
     {
@@ -48,6 +49,16 @@ class LoginRequest extends FormRequest
                 'email' => trans('auth.failed'),
             ]);
         }
+
+        // >>> INÍCIO DA VERIFICAÇÃO DE CONTA ATIVA <<<
+        $user = Auth::user(); // Pega o usuário autenticado
+
+        // Se for uma instância de User (para garantir que temos o campo is_active)
+        // e a conta não estiver ativa, faz logout e lança uma exceção.
+        if ($user instanceof User && !$user->is_active) {
+            $this->logoutUserAndThrowInactiveAccountException($user);
+        }
+        // >>> FIM DA VERIFICAÇÃO DE CONTA ATIVA <<<
 
         RateLimiter::clear($this->throttleKey());
     }
@@ -80,6 +91,28 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->input('email')).'|'.$this->ip());
+    }
+
+    /**
+     * Helper method to logout user and throw inactive account exception.
+     *
+     * @param \App\Models\User $user
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    protected function logoutUserAndThrowInactiveAccountException(User $user): void
+    {
+        $userId = $user->id; // Guarda o ID para o log, se necessário
+        
+        Auth::guard('web')->logout(); // Faz logout do usuário
+
+        // Limpa a sessão, mas mantém o erro flash para a próxima requisição
+        $this->session()->invalidate();
+        $this->session()->regenerateToken();
+
+        // Prepara a mensagem de erro para ser exibida na tela de login
+        throw ValidationException::withMessages([
+            'email' => __('Sua conta está desativada. Entre em contato com o suporte.'),
+        ])->redirectTo(route('login')); // Garante que o erro seja exibido na tela de login
     }
 }

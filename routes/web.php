@@ -6,7 +6,9 @@ use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\Admin\AppointmentManagementController;
 use App\Http\Controllers\Admin\BlockedPeriodController;
-use App\Http\Controllers\ClientAppointmentController; 
+use App\Http\Controllers\ClientAppointmentController;
+use App\Http\Controllers\Auth\SocialLoginController;
+use App\Http\Controllers\Admin\ClientController;
 
 
 Route::get('/', function () {
@@ -58,20 +60,43 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Route::post('/appointments/{appointment}/approve', [AppointmentManagementController::class, 'approve'])->name('appointments.approve');
     // Route::post('/appointments/{appointment}/cancel', [AppointmentManagementController::class, 'cancel'])->name('appointments.cancel');
 
-     // Rotas para Dias de Folga / Períodos Bloqueados
+    // Rotas para Dias de Folga / Períodos Bloqueados
     Route::resource('blocked-periods', BlockedPeriodController::class)->except(['show']);
     // Usamos except(['show']) porque geralmente não precisamos de uma página separada para "mostrar um único período bloqueado".
     // A listagem (index), criação (create/store) e edição (edit/update/destroy) são suficientes.
 
-    
+    // Rota para Gerenciamento de Clientes
+    Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');
+
+    //showclients
+    Route::get('/clients/{client}', [ClientController::class, 'show'])->name('clients.show'); 
+
+    Route::get('/clients/{client}/edit', [ClientController::class, 'edit'])->name('clients.edit');
+Route::put('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');
 });
 
 // Rota para a página de agendamento - requer autenticação
 Route::middleware(['auth'])->group(function () {
-    Route::get('/agendar', [BookingController::class, 'index'])->name('booking.index');
-    // Futuramente, aqui também pode ir a rota POST para salvar o agendamento
+    Route::get('/agendar', [BookingController::class, 'index'])
+        ->middleware(['auth', 'verified', 'profile.completed']) // Adicionado 'profile.completed'
+        ->name('booking.index');
     //meus agendamentos cliente
     Route::get('/meus-agendamentos', [ClientAppointmentController::class, 'index'])->name('client.appointments.index');
+
+
 });
+
+Route::middleware(['auth', 'verified', 'profile.completed'])->group(function () {
+    // Rota para "Meus Agendamentos" do cliente
+    Route::get('/my-appointments', [ClientAppointmentController::class, 'index'])->name('client.appointments.index');
+    // Outras rotas do cliente...
+});
+
+// Rotas para Login Social
+Route::get('/auth/{provider}/redirect', [SocialLoginController::class, 'redirectToProvider'])
+    ->name('socialite.redirect');
+
+Route::get('/auth/{provider}/callback', [SocialLoginController::class, 'handleProviderCallback'])
+    ->name('socialite.callback');
 
 require __DIR__ . '/auth.php';

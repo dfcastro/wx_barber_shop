@@ -17,14 +17,10 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
-                Rule::unique(User::class)->ignore($this->user()->id),
-            ],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user()->id)],
+            'phone_number' => ['nullable', 'string', 'max:20'], // << ADICIONADO/AJUSTADO
+            // Se quiser que seja obrigatório ao salvar o formulário de perfil, use:
+            // 'phone_number' => ['required', 'string', 'max:20'],
         ];
     }
 }

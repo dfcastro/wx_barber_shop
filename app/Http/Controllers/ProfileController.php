@@ -34,6 +34,12 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
+        // >>> INÍCIO DA LÓGICA PARA REMOVER A FLAG DA SESSÃO <<<
+        if (!empty($request->user()->phone_number) && session()->has('profile_incomplete_phone')) {
+            session()->forget('profile_incomplete_phone');
+        }
+        // >>> FIM DA LÓGICA PARA REMOVER A FLAG DA SESSÃO <<<
+
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 

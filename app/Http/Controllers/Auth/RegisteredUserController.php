@@ -32,18 +32,32 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'phone_number' => ['required', 'string', 'max:20'], // << REGRAS DE VALIDAÇÃO PARA TELEFONE
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone_number' => $request->phone_number, // << GARANTA QUE ESTA LINHA ESTEJA AQUI
             'password' => Hash::make($request->password),
+            // 'is_active' já tem default(true) no banco, então não precisa aqui a menos que queira definir explicitamente
+            // 'is_admin' já tem default(false) ou 0 no banco, então não precisa aqui para um cliente
         ]);
 
         event(new Registered($user));
 
         Auth::login($user);
+
+        // Verificar se o telefone está vazio (não deveria estar se a validação 'required' passou)
+        // e redirecionar se necessário (embora com 'required' na validação, este bloco se torna menos crítico aqui)
+        if (empty($user->phone_number) && config('auth.require_phone_after_social_login')) { // Adicione uma config se quiser controlar isso
+            session(['profile_incomplete_phone' => true]);
+            return redirect()->route('profile.edit')
+                             ->with('status', 'profile-incomplete')
+                             ->with('info', 'Cadastro quase completo! Por favor, adicione seu número de telefone.');
+        }
+
 
         return redirect(route('dashboard', absolute: false));
     }
