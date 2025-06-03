@@ -20,7 +20,17 @@ class ClientController extends Controller
 
     public function show(User $client)
     {
-        // $client->load('appointments'); // Descomente se quiser carregar agendamentos
+        // Carregar os agendamentos do cliente, ordenados pela data do agendamento (mais recentes primeiro)
+        // Também carregar o serviço relacionado a cada agendamento para exibir o nome do serviço
+        $client->load(['appointments' => function ($query) {
+            $query->with('service:id,name')->orderBy('appointment_time', 'desc');
+        }]);
+
+        if ($client->is_admin) {
+            // Redirecionar ou mostrar erro se tentar ver detalhes de um admin por esta rota
+            // return redirect()->route('admin.clients.index')->with('error', 'Não é permitido ver detalhes de administradores por esta interface.');
+        }
+
         return view('admin.clients.show', compact('client'));
     }
 

@@ -6,12 +6,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Contracts\Auth\CanResetPassword;
 
 // Se você está usando MustVerifyEmail em algum lugar, descomente a interface e use a trait.
 // class User extends Authenticatable implements MustVerifyEmail
-class User extends Authenticatable
+class User extends Authenticatable implements CanResetPassword // Adicionar CanResetPassword
 {
-    use HasFactory, Notifiable; // Adicione , \Illuminate\Auth\MustVerifyEmail; se implementar MustVerifyEmail
+    use HasFactory, Notifiable; 
+    use Notifiable, \Illuminate\Auth\Passwords\CanResetPassword; // Adicione , \Illuminate\Auth\MustVerifyEmail; se implementar MustVerifyEmail
 
     /**
      * The attributes that are mass assignable.
