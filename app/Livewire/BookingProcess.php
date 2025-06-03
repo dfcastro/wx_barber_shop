@@ -10,49 +10,89 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\BookingRequestedToClient;
 use App\Mail\NewBookingNotificationToAdmin;
 use Livewire\Component;
-use Illuminate\Support\Collection as IlluminateCollection;
+use Illuminate\Support\Collection as IlluminateCollection; // Não parece estar sendo usada, pode remover
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
+use App\Models\User; // IMPORTANTE: Importar o modelo User
 
 class BookingProcess extends Component
 {
     const MAX_ACTIVE_APPOINTMENTS = 4;
-
-    public IlluminateCollection $services;
+    public IlluminateCollection $services; // Não parece estar sendo usada, pode remover
     public $selectedServiceId = null;
-    public ?Service $selectedService = null; // << NOVA PROPRIEDADE: Armazena a instância do serviço
+    public ?Service $selectedService = null;
     public $selectedDate = null;
     public array $availableTimeSlots = [];
     public $selectedTimeSlot = null;
     public bool $userHasReachedMaxAppointments = false;
 
-    public function mount()
+    // Novas propriedades para agendamento pelo admin
+    public $targetUserId = null;    // Recebe o ID do cliente para quem o admin está agendando
+    public ?User $clientBeingBookedFor = null; // Instância do modelo User do cliente alvo
+    public bool $isAdminBookingMode = false;   // Flag para indicar se é um admin agendando
+
+    public string $pageTitle = ''; // Para o título dinâmico da página
+
+     /**
+     * Método mount é chamado quando o componente é inicializado.
+     * @param int|null $targetUserId - O ID do usuário para quem o agendamento está sendo feito (se aplicável).
+     */
+    public function mount($targetUserId = null)
     {
         $this->services = Service::orderBy('name')->get();
-        if (!$this->selectedDate) { // Se não vier de um estado anterior
+        if (!$this->selectedDate) {
             $this->selectedDate = now()->format('Y-m-d');
         }
 
-        // Se selectedServiceId já estiver definido (ex: estado anterior), carregar o selectedService
+        $loggedInUser = Auth::user();
+
+        if ($loggedInUser && $loggedInUser->is_admin && $targetUserId !== null) {
+            // Admin está agendando para um cliente específico
+            $this->targetUserId = $targetUserId;
+            $this->clientBeingBookedFor = User::find($this->targetUserId);
+
+            if (!$this->clientBeingBookedFor || $this->clientBeingBookedFor->is_admin) {
+                session()->flash('error', 'Cliente inválido ou não encontrado para agendamento.');
+                $this->isAdminBookingMode = false; // Reseta se o cliente for inválido
+                $this->pageTitle = __('Erro ao Carregar Agendamento');
+                // Idealmente, impedir o restante do carregamento ou redirecionar
+            } else {
+                $this->isAdminBookingMode = true;
+                $this->pageTitle = __('Agendando para: ') . $this->clientBeingBookedFor->name;
+            }
+        } elseif ($loggedInUser) {
+            // Cliente logado agendando para si mesmo
+            $this->targetUserId = $loggedInUser->id;
+            $this->clientBeingBookedFor = $loggedInUser;
+            $this->isAdminBookingMode = false;
+            $this->pageTitle = __('Faça seu Agendamento');
+        } else {
+            // Usuário não logado (o bookAppointment irá barrar, mas preparamos o título)
+            $this->pageTitle = __('Faça seu Agendamento');
+        }
+
+
         if ($this->selectedServiceId && !$this->selectedService) {
             $this->selectedService = Service::find($this->selectedServiceId);
         }
-
-        $this->checkAppointmentLimit();
-        $this->loadAvailableTimeSlots(); // Carrega slots para data/serviço inicial (se houver)
+        // A verificação de limite agora usa o cliente alvo
+        $this->checkClientAppointmentLimit();
+        $this->loadAvailableTimeSlots();
     }
 
-    public function checkAppointmentLimit()
+    public function checkClientAppointmentLimit()
     {
-        if (Auth::check()) {
-            $activeAppointmentsCount = Appointment::where('user_id', Auth::id())
+        if ($this->clientBeingBookedFor) { // Verifica se temos um cliente alvo
+            $activeAppointmentsCount = Appointment::where('user_id', $this->clientBeingBookedFor->id)
                 ->where('appointment_time', '>=', Carbon::now())
                 ->whereIn('status', ['pendente', 'confirmado'])
                 ->count();
             $this->userHasReachedMaxAppointments = $activeAppointmentsCount >= self::MAX_ACTIVE_APPOINTMENTS;
         } else {
+            // Se não há cliente alvo (ex: admin não selecionou, ou usuário não logado tentando agendar)
+            // A lógica em bookAppointment irá barrar o agendamento.
+            // Definimos como false para não mostrar a mensagem de limite indevidamente.
             $this->userHasReachedMaxAppointments = false;
         }
     }
@@ -368,39 +408,49 @@ class BookingProcess extends Component
 
     public function bookAppointment()
     {
-        $userId = Auth::id();
-        if (!$userId) {
-            session()->flash('error', 'Você precisa estar logado para fazer um agendamento.');
-            // Você pode querer disparar um evento para abrir um modal de login aqui, se tiver um
-            // $this->dispatch('open-login-modal');
+        $loggedInUser = Auth::user(); // O usuário que está realizando a ação (pode ser o admin)
+
+        if (!$this->clientBeingBookedFor) { // Verifica se temos um cliente para quem agendar
+            if ($loggedInUser) {
+                session()->flash('error', 'Cliente para o agendamento não especificado.');
+            } else {
+                session()->flash('error', 'Você precisa estar logado para fazer um agendamento.');
+                return redirect()->route('login');
+            }
             return;
         }
 
-        // ===== INÍCIO DA NOVA VERIFICAÇÃO DE CONTA ATIVA =====
-        $user = Auth::user(); // Pega o usuário autenticado
+        // Se for um admin agendando, o limite de agendamentos se aplica ao cliente, não ao admin.
+        // A flag $this->userHasReachedMaxAppointments já foi calculada para $this->clientBeingBookedFor.
+        if ($this->userHasReachedMaxAppointments) {
+            $clientName = $this->clientBeingBookedFor->name;
+            session()->flash('error', "O cliente {$clientName} atingiu o limite de " . self::MAX_ACTIVE_APPOINTMENTS . ' agendamento(s) futuro(s) ativo(s).');
+            return;
+        }
 
-        // Certifique-se de que $user é uma instância do seu modelo User para acessar is_active
-        if ($user instanceof \App\Models\User && !$user->is_active) {
-            $userEmailForLog = $user->email; // Guarda para o log antes de deslogar
-            Auth::logout(); // Faz logout do usuário
-
-            // Limpa a sessão
+        // Verifica se a conta do CLIENTE está ativa, se for um admin agendando.
+        // Se for o próprio cliente agendando, a verificação de conta ativa já foi feita no middleware global ou na tentativa de login.
+        // Esta verificação é mais uma garantia no ponto de agendamento se o admin tentar agendar para um cliente inativo.
+        // Decisão de negócio: admin PODE ou NÃO PODE agendar para cliente inativo?
+        // Se o admin PODE agendar para um cliente inativo, remova este bloco.
+        // Se o admin NÃO PODE, mantenha este bloco.
+        if ($this->isAdminBookingMode && !$this->clientBeingBookedFor->is_active) {
+             session()->flash('error', "A conta do cliente {$this->clientBeingBookedFor->name} está desativada. Ative a conta antes de agendar.");
+             return;
+        }
+        // Se for o próprio cliente agendando (não admin) e a conta dele for desativada após o login,
+        // o middleware global CheckAccountIsActive já deve ter deslogado ele.
+        // Mas uma verificação aqui não faz mal, como fizemos antes:
+        if (!$this->isAdminBookingMode && $loggedInUser instanceof User && !$loggedInUser->is_active) {
+            Auth::logout();
             request()->session()->invalidate();
             request()->session()->regenerateToken();
-
-            Log::info("[BookingProcess] Usuário {$userEmailForLog} tentou agendar com conta INATIVA e foi deslogado.");
-            session()->flash('error', 'Sua conta foi desativada. Por favor, entre em contato com o suporte para mais informações.');
-            return redirect()->route('login'); // Redireciona para a página de login
-        }
-        // ===== FIM DA NOVA VERIFICAÇÃO DE CONTA ATIVA =====
-
-        $this->checkAppointmentLimit();
-        if ($this->userHasReachedMaxAppointments) {
-            session()->flash('error', 'Você atingiu o limite de ' . self::MAX_ACTIVE_APPOINTMENTS . ' agendamento(s) futuro(s) ativo(s). Por favor, aguarde a realização ou cancele um agendamento existente para marcar um novo.');
-            return;
+            Log::info("[BookingProcess] Usuário {$loggedInUser->email} tentou agendar com conta INATIVA e foi deslogado.");
+            session()->flash('error', 'Sua conta foi desativada. Por favor, entre em contato com o suporte.');
+            return redirect()->route('login');
         }
 
-        // Validação dos dados selecionados (como antes)
+
         if (!$this->selectedService || !$this->selectedDate || !$this->selectedTimeSlot) {
             session()->flash('error', 'Por favor, selecione serviço, data e horário.');
             return;
@@ -409,18 +459,16 @@ class BookingProcess extends Component
         $appointmentDateTime = Carbon::parse($this->selectedDate . ' ' . $this->selectedTimeSlot);
         $now = Carbon::now();
 
-        // Verifica se o horário já passou (como antes)
         if ($appointmentDateTime->lt($now->copy()->subMinutes(1))) {
             session()->flash('error', 'Não é possível agendar para um horário que já passou.');
             $this->selectedTimeSlot = null;
             $this->loadAvailableTimeSlots();
             return;
         }
-
+        
         DB::beginTransaction();
 
         try {
-            // Re-verificar a disponibilidade do slot (como antes)
             if (!$this->isSlotStillAvailable($appointmentDateTime, $this->selectedService->id, $this->selectedService->duration_minutes)) {
                 DB::rollBack();
                 session()->flash('error', 'Desculpe, este horário foi agendado por outra pessoa ou tornou-se indisponível enquanto você confirmava. Por favor, escolha outro.');
@@ -429,34 +477,37 @@ class BookingProcess extends Component
                 return;
             }
 
-            // Cria o agendamento (como antes)
-            $appointment = \App\Models\Appointment::create([ // Use o namespace completo se Appointment não estiver importado no topo
-                'user_id' => $userId,
+            $appointment = Appointment::create([
+                'user_id' => $this->clientBeingBookedFor->id, // << MUITO IMPORTANTE: ID do cliente para quem se está agendando
                 'service_id' => $this->selectedService->id,
                 'appointment_time' => $appointmentDateTime,
                 'status' => 'pendente',
             ]);
 
-            // Envio de e-mails em fila (como antes)
             try {
-                \Illuminate\Support\Facades\Mail::to($appointment->user->email)->queue(new \App\Mail\BookingRequestedToClient($appointment));
-                $adminEmail = config('mail.admin_address', env('ADMIN_EMAIL_ADDRESS'));
-                if ($adminEmail) {
-                    \Illuminate\Support\Facades\Mail::to($adminEmail)->queue(new \App\Mail\NewBookingNotificationToAdmin($appointment));
+                // E-mail para o cliente para quem o agendamento foi feito
+                Mail::to($this->clientBeingBookedFor->email)->queue(new BookingRequestedToClient($appointment));
+                
+                $adminEmailForNotification = config('mail.admin_address', env('ADMIN_EMAIL_ADDRESS'));
+                if ($adminEmailForNotification) {
+                    // O Mailable pode ser ajustado para indicar se um admin fez o agendamento
+                    $adminWhoBooked = $this->isAdminBookingMode ? $loggedInUser : null;
+                    Mail::to($adminEmailForNotification)->queue(new NewBookingNotificationToAdmin($appointment, $adminWhoBooked));
                 }
-                Log::info("E-mails de solicitação de agendamento ENFILEIRADOS para o agendamento ID: {$appointment->id}.");
+                Log::info("E-mails de solicitação de agendamento ENFILEIRADOS para o agendamento ID: {$appointment->id} (Cliente: {$this->clientBeingBookedFor->email}).");
+
             } catch (\Exception $e) {
                 Log::error('Erro ao ENFILEIRAR e-mail de novo agendamento ID ' . $appointment->id . ': ' . $e->getMessage());
             }
 
             DB::commit();
 
-            session()->flash('success', 'Seu agendamento para ' . $appointmentDateTime->format('d/m/Y') . ' às ' . $appointmentDateTime->format('H:i') . ' foi solicitado com sucesso! Aguarde a confirmação por e-mail.');
+            $clientNameDisplay = $this->isAdminBookingMode ? "para {$this->clientBeingBookedFor->name} " : "";
+            session()->flash('success', "Agendamento {$clientNameDisplay}em {$appointmentDateTime->format('d/m/Y')} às {$appointmentDateTime->format('H:i')} foi solicitado com sucesso! Aguarde a confirmação.");
 
-            // Limpa e recarrega (como antes)
             $this->selectedTimeSlot = null;
             $this->loadAvailableTimeSlots();
-            $this->checkAppointmentLimit();
+            $this->checkClientAppointmentLimit(); // Recalcula o limite para o cliente correto
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -469,7 +520,10 @@ class BookingProcess extends Component
 
     public function render()
     {
-        return view('livewire.booking-process');
+        // A variável $pageTitle já está sendo definida no mount
+        return view('livewire.booking-process', [
+            'displayNameForBooking' => $this->pageTitle
+        ]);
     }
     protected function isSlotStillAvailable(Carbon $slotStart, int $serviceId, int $serviceDurationMinutes): bool
     {

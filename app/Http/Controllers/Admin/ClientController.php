@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Http\Request; // Importar Request
-use Illuminate\Support\Facades\Validator; // Para validação inline, se não usar Form Request
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash; // Para gerar hash da senha
+use Illuminate\Support\Str;          // Para gerar string aleatória
+use Illuminate\Auth\Events\Registered; // Para disparar o evento de registro
+use Illuminate\Validation\Rules;       // Para regras de validação de senha (se necessário)
+
 
 class ClientController extends Controller
 {
@@ -60,5 +64,51 @@ class ClientController extends Controller
         $client->save();
 
         return redirect()->route('admin.clients.show', $client)->with('success', 'Cliente atualizado com sucesso!');
+    }
+
+    /**
+     * Mostra o formulário para criar um novo cliente.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function create()
+    {
+        return view('admin.clients.create');
+    }
+
+    /**
+     * Armazena um novo cliente criado pelo admin.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function store(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+            'phone_number' => ['required', 'string', 'max:20'], // Ou suas regras específicas
+            // Não pedimos senha ao admin, vamos gerar uma ou deixar o cliente definir
+        ]);
+
+        // Gera uma senha aleatória forte (o cliente pode mudá-la via "Esqueci minha senha")
+        $generatedPassword = Str::random(12); // Ou use Rules\Password::defaults() para complexidade
+
+        $client = User::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'phone_number' => $validatedData['phone_number'],
+            'password' => Hash::make($generatedPassword), // Define a senha aleatória
+            'is_admin' => false, // Garante que é um cliente
+            'is_active' => true,  // Cliente criado pelo admin já nasce ativo
+            'email_verified_at' => now(), // Admin está criando, podemos considerar verificado
+        ]);
+
+        event(new Registered($client)); // Dispara o evento de registro
+
+        // Notificar o cliente sobre a criação da conta e a senha temporária ou como proceder?
+        // Isso pode ser feito com um Mailable. Por agora, vamos focar na criação.
+
+        return redirect()->route('admin.clients.index')->with('message', 'Cliente ' . $client->name . ' criado com sucesso!');
     }
 }

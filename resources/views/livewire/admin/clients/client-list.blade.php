@@ -2,38 +2,61 @@
 <div>
     {{-- Mensagem Flash --}}
     @if (session()->has('message'))
-        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 dark:text-green-300 dark:bg-green-900 dark:border-green-700 rounded" role="alert">
+        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 dark:text-green-300 dark:bg-green-900 dark:border-green-700 rounded"
+            role="alert">
             {{ session('message') }}
         </div>
     @endif
     @if (session()->has('error'))
-        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 dark:text-red-300 dark:bg-red-900 dark:border-red-700 rounded" role="alert">
+        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 dark:text-red-300 dark:bg-red-900 dark:border-red-700 rounded"
+            role="alert">
             {{ session('error') }}
         </div>
     @endif
 
 
     {{-- Campo de Busca --}}
-    <div class="mb-4">
-        <x-text-input
-            wire:model.live.debounce.300ms="search"
-            type="text"
-            class="block w-full sm:w-2/3 md:w-1/2"
-            placeholder="Buscar por nome, e-mail..." />
+    <div class="mb-4 md:flex md:justify-between md:items-center">
+        <div class="mb-4 md:mb-0">
+            <a href="{{ route('admin.clients.create') }}"
+                class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Novo Cliente
+            </a>
+        </div>
+        <div class="w-full md:w-1/2 lg:w-1/3">
+            <x-text-input wire:model.live.debounce.300ms="search" type="text" class="block w-full"
+                placeholder="Buscar por nome, e-mail..." />
+        </div>
     </div>
 
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">E-mail</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Telefone</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Login Social</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th> {{-- << NOVA COLUNA --}}
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Registrado Em</th>
-                    <th scope="col" class="relative px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th> {{-- << COLUNA DE AÇÕES ATUALIZADA --}}
-                </tr>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Nome</th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        E-mail</th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Telefone</th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Login Social</th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Status</th> {{-- << NOVA COLUNA --}} <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Registrado Em</th>
+                        <th scope="col"
+                            class="relative px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Ações</th> {{-- << COLUNA DE AÇÕES ATUALIZADA --}} </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse ($clients as $client)
@@ -49,7 +72,8 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                             @if ($client->provider_name)
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-100">
+                                <span
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-100">
                                     {{ ucfirst($client->provider_name) }}
                                 </span>
                             @else
@@ -59,11 +83,13 @@
                         {{-- Status da Conta --}}
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             @if ($client->is_active)
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100">
+                                <span
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100">
                                     Ativa
                                 </span>
                             @else
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100">
+                                <span
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100">
                                     Inativa
                                 </span>
                             @endif
@@ -73,19 +99,20 @@
                         </td>
                         {{-- Ações --}}
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <a href="{{ route('admin.clients.show', $client->id) }}" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200 mr-3">
+                            <a href="{{ route('admin.clients.show', $client->id) }}"
+                                class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200 mr-3">
                                 Detalhes
                             </a>
                             @if ($client->is_active)
                                 <button wire:click="toggleAccountStatus({{ $client->id }})"
-                                        wire:confirm="Tem certeza que deseja DESATIVAR a conta deste cliente? Ele não poderá mais fazer login."
-                                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 font-semibold">
+                                    wire:confirm="Tem certeza que deseja DESATIVAR a conta deste cliente? Ele não poderá mais fazer login."
+                                    class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 font-semibold">
                                     Desativar
                                 </button>
                             @else
                                 <button wire:click="toggleAccountStatus({{ $client->id }})"
-                                        wire:confirm="Tem certeza que deseja ATIVAR a conta deste cliente?"
-                                        class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 font-semibold">
+                                    wire:confirm="Tem certeza que deseja ATIVAR a conta deste cliente?"
+                                    class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 font-semibold">
                                     Ativar
                                 </button>
                             @endif
@@ -93,7 +120,8 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-300">
+                        <td colspan="7"
+                            class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-300">
                             @if (empty($search))
                                 Nenhum cliente encontrado.
                             @else

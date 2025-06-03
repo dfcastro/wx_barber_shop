@@ -9,6 +9,9 @@ use App\Http\Controllers\Admin\BlockedPeriodController;
 use App\Http\Controllers\ClientAppointmentController;
 use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\Admin\ClientController;
+use App\Http\Controllers\Admin\AdminBookingController;
+
+
 
 
 Route::get('/', function () {
@@ -65,14 +68,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Usamos except(['show']) porque geralmente não precisamos de uma página separada para "mostrar um único período bloqueado".
     // A listagem (index), criação (create/store) e edição (edit/update/destroy) são suficientes.
 
-    // Rota para Gerenciamento de Clientes
     Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');
-
-    //showclients
-    Route::get('/clients/{client}', [ClientController::class, 'show'])->name('clients.show'); 
-
+    Route::get('/clients/create', [ClientController::class, 'create'])->name('clients.create'); // << MOVIDA PARA CIMA
+    Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
+    Route::get('/clients/{client}', [ClientController::class, 'show'])->name('clients.show');
     Route::get('/clients/{client}/edit', [ClientController::class, 'edit'])->name('clients.edit');
-Route::put('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');
+    Route::put('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');
+    Route::get('/booking/for/{client}', [AdminBookingController::class, 'createForClient'])->name('booking.create-for-client');
 });
 
 // Rota para a página de agendamento - requer autenticação

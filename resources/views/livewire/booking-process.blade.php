@@ -24,6 +24,10 @@
         */
     </style>
     {{-- ... (mensagens de feedback e seleção de serviço como antes) ... --}}
+    @if ($displayNameForBooking)
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{{ $displayNameForBooking }}</h3>
+    @endif
+    
     @if (session()->has('success'))
         <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 dark:text-green-300 dark:bg-green-900 dark:border-green-700 rounded"
             role="alert">
