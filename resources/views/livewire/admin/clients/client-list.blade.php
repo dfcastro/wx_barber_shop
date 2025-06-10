@@ -41,6 +41,7 @@
     <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg shadow">
         <h3 class="text-md font-semibold text-gray-700 dark:text-gray-200 mb-3">Filtrar Clientes:</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {{-- Filtro Status da Conta (como antes) --}}
             <div>
                 <label for="filterAccountStatus"
                     class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status da Conta:</label>
@@ -51,6 +52,7 @@
                     <option value="inactive">Inativos</option>
                 </select>
             </div>
+            {{-- Filtro E-mail Verificado (como antes) --}}
             <div>
                 <label for="filterEmailVerified"
                     class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail Verificado:</label>
@@ -61,15 +63,16 @@
                     <option value="unverified">Não Verificados</option>
                 </select>
             </div>
-            {{-- Espaço para mais filtros no futuro (ex: tipo de login) --}}
+            {{-- NOVO FILTRO TIPO DE LOGIN --}}
             <div>
-                {{-- <label for="filterLoginType"
-                    class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Login:</label>
-                <select wire:model.live="filterLoginType" id="filterLoginType" class="mt-1 block w-full ...">
+                <label for="filterLoginType" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de
+                    Login:</label>
+                <select wire:model.live="filterLoginType" id="filterLoginType"
+                    class="mt-1 block w-full py-2 px-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     <option value="">Todos</option>
                     <option value="password">E-mail/Senha</option>
                     <option value="social">Login Social</option>
-                </select> --}}
+                </select>
             </div>
         </div>
     </div>
@@ -192,11 +195,12 @@
                             </div>
                         </td>
                     </tr>
-                    @empty
+                @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-300">
-                            {{-- Mensagem atualizada para refletir busca e filtros --}}
-                            @if (empty($search) && empty($filterAccountStatus) && empty($filterEmailVerified))
+                        <td colspan="7"
+                            class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-300">
+                            {{-- Mensagem atualizada para refletir busca e todos os filtros --}}
+                            @if (empty($search) && empty($filterAccountStatus) && empty($filterEmailVerified) && empty($filterLoginType))
                                 Nenhum cliente encontrado.
                             @else
                                 Nenhum cliente encontrado para os filtros e busca aplicados.

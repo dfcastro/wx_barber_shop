@@ -10,6 +10,8 @@ use App\Http\Controllers\ClientAppointmentController;
 use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\AdminBookingController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FinancialController; 
 
 
 
@@ -75,6 +77,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/clients/{client}/edit', [ClientController::class, 'edit'])->name('clients.edit');
     Route::put('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');
     Route::get('/booking/for/{client}', [AdminBookingController::class, 'createForClient'])->name('booking.create-for-client');
+
+
+    //dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+     // Rota para o Relatório Financeiro
+     Route::get('/financials', [FinancialController::class, 'index'])->name('financials.index');
 });
 
 // Rota para a página de agendamento - requer autenticação

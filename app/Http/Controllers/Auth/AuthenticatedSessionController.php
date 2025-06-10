@@ -28,7 +28,14 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // INÍCIO DA LÓGICA DE REDIRECIONAMENTO
+        if ($request->user()->is_admin) {
+            return redirect()->intended(route('admin.dashboard'));
+        }
+
+        // Para clientes, o comportamento padrão é bom
+        return redirect()->intended(route('dashboard'));
+        // FIM DA LÓGICA DE REDIRECIONAMENTO
     }
 
     /**
@@ -43,5 +50,21 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+    public function redirectTo(Request $request)
+    {
+        if (Auth::user()->is_admin) {
+            return route('admin.dashboard');
+        }
+        return route('dashboard'); // Para clientes normais
+    }
+    protected function authenticated(Request $request, $user)
+    {
+        if ($user->is_admin) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        // Para clientes, pode redirecionar para o dashboard padrão ou para a página de agendamento
+        return redirect()->route('dashboard'); // Ou 'booking.index'
     }
 }

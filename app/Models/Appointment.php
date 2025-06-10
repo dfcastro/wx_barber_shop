@@ -15,7 +15,8 @@ class Appointment extends Model
         'service_id',
         'appointment_time',
         'status',
-        'notes',
+        'payment_status',   // << ADICIONAR
+        'payment_method',   // << ADICIONAR
     ];
 
     // Definindo os casts para tipos corretos

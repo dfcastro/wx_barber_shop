@@ -28,7 +28,7 @@ class ClientController extends Controller
 
         if ($client->is_admin) {
             // Redirecionar ou mostrar erro se tentar ver detalhes de um admin por esta rota
-            // return redirect()->route('admin.clients.index')->with('error', 'Não é permitido ver detalhes de administradores por esta interface.');
+                 return redirect()->route('admin.clients.index')->with('error', 'Não é permitido ver detalhes de administradores por esta interface.');
         }
 
         return view('admin.clients.show', compact('client'));

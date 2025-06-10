@@ -20,6 +20,8 @@ class ClientList extends Component
     public string $filterAccountStatus = ''; // Opções: '', 'active', 'inactive'
     public string $filterEmailVerified = ''; // Opções: '', 'verified', 'unverified'
 
+    public string $filterLoginType = '';
+
     // Hooks para resetar a paginação quando os filtros ou a busca mudam
     public function updatingSearch()
     {
@@ -32,6 +34,11 @@ class ClientList extends Component
     }
 
     public function updatingFilterEmailVerified()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterLoginType()
     {
         $this->resetPage();
     }
@@ -104,7 +111,7 @@ class ClientList extends Component
     {
         $clientsQuery = User::where('is_admin', false); // Apenas clientes
 
-        // Aplicar filtro de busca
+        // Aplicar filtro de busca (como antes)
         if (!empty($this->search)) {
             $clientsQuery->where(function ($query) {
                 $searchTerm = '%' . $this->search . '%';
@@ -113,18 +120,27 @@ class ClientList extends Component
             });
         }
 
-        // Aplicar filtro de Status da Conta
+        // Aplicar filtro de Status da Conta (como antes)
         if ($this->filterAccountStatus === 'active') {
             $clientsQuery->where('is_active', true);
         } elseif ($this->filterAccountStatus === 'inactive') {
             $clientsQuery->where('is_active', false);
         }
 
-        // Aplicar filtro de E-mail Verificado
+        // Aplicar filtro de E-mail Verificado (como antes)
         if ($this->filterEmailVerified === 'verified') {
             $clientsQuery->whereNotNull('email_verified_at');
         } elseif ($this->filterEmailVerified === 'unverified') {
             $clientsQuery->whereNull('email_verified_at');
+        }
+
+        // Aplicar filtro de Tipo de Login (NOVA LÓGICA)
+        if ($this->filterLoginType === 'password') {
+            // Clientes com E-mail/Senha não têm provedor social
+            $clientsQuery->whereNull('provider_name');
+        } elseif ($this->filterLoginType === 'social') {
+            // Clientes com Login Social têm um provedor social
+            $clientsQuery->whereNotNull('provider_name');
         }
 
         $clients = $clientsQuery->orderBy('name', 'asc')->paginate(10);
