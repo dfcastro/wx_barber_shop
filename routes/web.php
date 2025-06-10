@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FinancialController; 
+use App\Http\Controllers\Admin\ExpenseCategoryController;
+use App\Http\Controllers\Admin\ExpenseController;
 
 
 
@@ -84,6 +86,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
      // Rota para o Relatório Financeiro
      Route::get('/financials', [FinancialController::class, 'index'])->name('financials.index');
+
+     // Rota para Gerenciamento de Categorias de Despesas
+    Route::get('/expense-categories', [ExpenseCategoryController::class, 'index'])->name('expense-categories.index');
+
+    // Rota para Gerenciamento de Despesas
+    Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+
 });
 
 // Rota para a página de agendamento - requer autenticação
