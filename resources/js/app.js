@@ -2,6 +2,7 @@ import './bootstrap';
 
 import Alpine from 'alpinejs';
 
-//window.Alpine = Alpine;
-
-//Alpine.start();
+// Apenas definimos o Alpine na janela global.
+// O Livewire irá encontrar esta variável e iniciar o Alpine por conta própria.
+window.Alpine = Alpine;
+console.log('VERSÃO NOVA DO APP.JS CARREGADA COM SUCESSO!');

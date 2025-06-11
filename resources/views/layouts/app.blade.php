@@ -12,18 +12,18 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
-    @vite(['resources/css/app.css', 'resources/js/app.js']) {{-- Ou como estiver sua configuração do Vite/Mix --}}
+    @vite(['resources/css/app.css'])
 
     {{-- ESTILOS DO LIVEWIRE AQUI --}}
     @livewireStyles
 </head>
 
 <body class="font-sans antialiased">
-    <div class="min-h-screen bg-gray-100">
-        @include('layouts.navigation') {{-- Ou sua navegação --}}
+    <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
+        @include('layouts.navigation')
 
         @if (isset($header))
-            <header class="bg-white shadow">
+            <header class="bg-white dark:bg-gray-800 shadow">
                 <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                     {{ $header }}
                 </div>
@@ -31,15 +31,20 @@
         @endif
 
         <main>
-            {{ $slot }}
+            <div class="py-12">
+                <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    {{ $slot }}
+                </div>
+            </div>
         </main>
     </div>
 
     {{-- SCRIPTS DO LIVEWIRE AQUI, ANTES DE FECHAR O BODY --}}
-    @livewireScripts
+
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     {{-- Opcional: Para tradução para Português --}}
     <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
+    @livewireScripts
 </body>
 
 </html>

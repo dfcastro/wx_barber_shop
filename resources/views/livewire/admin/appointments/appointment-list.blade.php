@@ -1,98 +1,104 @@
-{{-- resources/views/livewire/admin/appointments/appointment-list.blade.php --}}
 <div>
-    {{-- Mensagens Flash --}}
+    {{-- Mensagens de Feedback --}}
     @if (session()->has('message'))
-        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 dark:text-green-300 dark:bg-green-900 dark:border-green-700 rounded" role="alert">
+        <div class="mb-4 p-4 text-sm bg-green-100 border border-green-400 text-green-700 dark:text-green-300 dark:bg-green-900 dark:border-green-700 rounded">
             {{ session('message') }}
         </div>
     @endif
-    @if (session()->has('error'))
-        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 dark:text-red-300 dark:bg-red-900 dark:border-red-700 rounded" role="alert">
-            {{ session('error') }}
-        </div>
-    @endif
 
-    {{-- Filtro de Data (como antes) --}}
-    <div class="mb-4">
-        <label for="filterDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por Data:</label>
-        <x-text-input wire:model.live="filterDate" id="filterDate" type="date" class="mt-1 block w-full sm:w-1/3" />
+    {{-- Cabeçalho: Apenas o Título da Página --}}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
+            Lista de Agendamentos
+        </h1>
+        {{-- O botão foi removido daqui --}}
     </div>
 
-    <div class="overflow-x-auto">
+    {{-- Filtros e Pesquisa --}}
+    <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg shadow">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <x-input-label for="search" :value="__('Buscar por Cliente')" />
+                <x-text-input wire:model.live.debounce.300ms="search" id="search" class="block mt-1 w-full" type="text" name="search" />
+            </div>
+            <div>
+                <x-input-label for="filterStatus" :value="__('Filtrar por Status')" />
+                <select wire:model.live="filterStatus" id="filterStatus" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
+                    <option value="">Todos os Status</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="confirmado">Confirmado</option>
+                    <option value="concluido">Concluído</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+             <div>
+                <x-input-label for="filterDate" :value="__('Filtrar por Data')" />
+                <x-text-input wire:model.live.debounce.300ms="filterDate" id="filterDate" class="block mt-1 w-full" type="date" name="filterDate" />
+            </div>
+        </div>
+    </div>
+
+    {{-- Tabela de Agendamentos --}}
+    <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cliente</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Serviço</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Data / Hora</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Data e Hora</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pagamento</th> {{-- << NOVA COLUNA --}}
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
+                    <th scope="col" class="relative px-6 py-3"><span class="sr-only">Ações</span></th>
                 </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse ($appointments as $appointment)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        {{-- ... (células Cliente, Serviço, Data/Hora, Status como antes) ... --}}
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ $appointment->user->name ?? 'Cliente Removido' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ $appointment->service->name ?? 'Serviço Removido' }}</td>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700" wire:key="{{ $appointment->id }}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ $appointment->user->name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ $appointment->service->name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ \Carbon\Carbon::parse($appointment->appointment_time)->format('d/m/Y H:i') }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                 @switch($appointment->status)
                                     @case('pendente') bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100 @break
-                                    @case('confirmado') bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100 @break
+                                    @case('confirmado') bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-100 @break
+                                    @case('concluido') bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100 @break
                                     @case('cancelado') bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100 @break
-                                    @case('concluido') bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-100 @break
-                                    @default bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200 @break
                                 @endswitch
                             ">
                                 {{ ucfirst($appointment->status) }}
                             </span>
                         </td>
-                        
-                        {{-- Célula Status do Pagamento --}}
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            @if ($appointment->payment_status === 'pago')
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100">
-                                    Pago
-                                </span>
-                            @else
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100">
-                                    Pendente
-                                </span>
-                            @endif
-                        </td>
-
-                        {{-- Célula Ações --}}
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center space-x-2">
-                                @if($appointment->status === 'pendente')
-                                    <button wire:click="confirmAppointment({{ $appointment->id }})" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200 font-semibold" title="Confirmar Agendamento">Confirmar</button>
-                                    <button wire:click="cancelAppointmentAsAdmin({{ $appointment->id }})" wire:confirm="Tem certeza que deseja CANCELAR este agendamento?" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 font-semibold" title="Cancelar Agendamento">Cancelar</button>
-                                @endif
-
-                                {{-- NOVO BOTÃO: MARCAR COMO PAGO --}}
-                                @if($appointment->status === 'confirmado' && $appointment->payment_status === 'pendente')
-                                    <button wire:click="markAsPaid({{ $appointment->id }})"
-                                            wire:confirm="Tem certeza que deseja marcar este agendamento como PAGO e CONCLUÍDO?"
-                                            class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200 font-semibold" title="Marcar como Pago e Concluir">
-                                        Marcar como Pago
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                             <x-dropdown align="right" width="48">
+                                <x-slot name="trigger">
+                                    <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
+                                        <div>Ações</div>
+                                        <div class="ms-1"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></div>
                                     </button>
-                                @endif
-                            </div>
+                                </x-slot>
+                                <x-slot name="content">
+                                    @if($appointment->status === 'pendente')
+                                        <x-dropdown-link href="#" wire:click.prevent="confirmAppointment({{ $appointment->id }})">Confirmar</x-dropdown-link>
+                                    @endif
+                                    @if($appointment->status !== 'concluido' && $appointment->status !== 'cancelado')
+                                        <x-dropdown-link href="#" wire:click.prevent="markAsCompleted({{ $appointment->id }})">Marcar como Concluído</x-dropdown-link>
+                                        <x-dropdown-link href="#" wire:click.prevent="confirmCancellation({{ $appointment->id }})">Cancelar</x-dropdown-link>
+                                    @endif
+                                </x-slot>
+                            </x-dropdown>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">Nenhum agendamento encontrado para esta data.</td>
+                        <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-300">Nenhum agendamento encontrado.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
 
-    <div class="mt-4">
-        {{ $appointments->links() }}
-    </div>
+    {{-- Paginação --}}
+    @if ($appointments->hasPages())
+        <div class="mt-4">{{ $appointments->links() }}</div>
+    @endif
 </div>

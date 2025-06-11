@@ -1,6 +1,15 @@
-{{-- resources/views/livewire/admin/clients/client-list.blade.php --}}
 <div>
-    {{-- Mensagens Flash (incluindo para 'info') --}}
+    {{-- Título da Página e Ação Principal --}}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
+            Lista de Clientes
+        </h1>
+        <x-button.create href="{{ route('admin.clients.create') }}">
+            Novo Cliente
+        </x-button.create>
+    </div>
+
+    {{-- Mensagens de Feedback --}}
     @if (session()->has('message'))
         <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 dark:text-green-300 dark:bg-green-900 dark:border-green-700 rounded"
             role="alert">
@@ -20,28 +29,18 @@
         </div>
     @endif
 
-    {{-- Campo de Busca (como antes) --}}
-    <div class="mb-4 md:flex md:justify-between md:items-center">
-        <div class="mb-4 md:mb-0">
-            <a href="{{ route('admin.clients.create') }}"
-                class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Novo Cliente
-            </a>
-        </div>
+    {{-- Campo de Busca (Alinhado à direita) --}}
+    <div class="mb-4 flex justify-end">
         <div class="w-full md:w-1/2 lg:w-1/3">
             <x-text-input wire:model.live.debounce.300ms="search" type="text" class="block w-full"
                 placeholder="Buscar por nome, e-mail..." />
         </div>
     </div>
-    {{-- SEÇÃO DE FILTROS --}}
+
+    {{-- Seção de Filtros --}}
     <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg shadow">
         <h3 class="text-md font-semibold text-gray-700 dark:text-gray-200 mb-3">Filtrar Clientes:</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {{-- Filtro Status da Conta (como antes) --}}
             <div>
                 <label for="filterAccountStatus"
                     class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status da Conta:</label>
@@ -52,7 +51,6 @@
                     <option value="inactive">Inativos</option>
                 </select>
             </div>
-            {{-- Filtro E-mail Verificado (como antes) --}}
             <div>
                 <label for="filterEmailVerified"
                     class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail Verificado:</label>
@@ -63,7 +61,6 @@
                     <option value="unverified">Não Verificados</option>
                 </select>
             </div>
-            {{-- NOVO FILTRO TIPO DE LOGIN --}}
             <div>
                 <label for="filterLoginType" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de
                     Login:</label>
@@ -76,12 +73,12 @@
             </div>
         </div>
     </div>
-    {{-- FIM DA SEÇÃO DE FILTROS --}}
-    <div class="overflow-x-auto">
+
+    {{-- Tabela de Clientes --}}
+    <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                    {{-- ... (Cabeçalhos das colunas como antes) ... --}}
                     <th scope="col"
                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Nome</th>
@@ -100,106 +97,85 @@
                     <th scope="col"
                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Registrado Em</th>
-                    <th scope="col"
-                        class="relative px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Ações</th>
+                    <th scope="col" class="relative px-6 py-3"><span class="sr-only">Ações</span></th>
                 </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse ($clients as $client)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        {{-- ... (Células das colunas como antes) ... --}}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700" wire:key="{{ $client->id }}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                            {{ $client->name }}
-                        </td>
+                            {{ $client->name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {{ $client->email }}
-                        </td>
+                            {{ $client->email }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {{ $client->phone_number ?? '-' }}
-                        </td>
+                            {{ $client->phone_number ?? '-' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             @if ($client->hasVerifiedEmail())
                                 <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100">
-                                    Verificado
-                                </span>
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100">Verificado</span>
                             @else
                                 <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100">
-                                    Não Verificado
-                                </span>
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100">Não
+                                    Verificado</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             @if ($client->is_active)
                                 <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100">
-                                    Ativa
-                                </span>
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100">Ativa</span>
                             @else
                                 <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100">
-                                    Inativa
-                                </span>
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100">Inativa</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {{ $client->created_at->format('d/m/Y') }}
-                        </td>
-                        {{-- Ações --}}
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center space-x-2">
-                                <a href="{{ route('admin.clients.show', $client->id) }}"
-                                    class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200"
-                                    title="Ver Detalhes">
-                                    Detalhes
-                                </a>
-                                {{-- Botão Ativar/Desativar --}}
-                                @if ($client->is_active)
-                                    <button wire:click="toggleAccountStatus({{ $client->id }})"
-                                        wire:confirm="Tem certeza que deseja DESATIVAR a conta deste cliente? Ele não poderá mais fazer login."
-                                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 font-semibold"
-                                        title="Desativar Conta">
-                                        Desativar
+                            {{ $client->created_at->format('d/m/Y') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                            <x-dropdown align="right" width="48">
+                                <x-slot name="trigger">
+                                    <button
+                                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
+                                        <div>Ações</div>
+                                        <div class="ms-1"><svg class="fill-current h-4 w-4"
+                                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd"
+                                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                    clip-rule="evenodd" />
+                                            </svg></div>
                                     </button>
-                                @else
-                                    <button wire:click="toggleAccountStatus({{ $client->id }})"
-                                        wire:confirm="Tem certeza que deseja ATIVAR a conta deste cliente?"
-                                        class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 font-semibold"
-                                        title="Ativar Conta">
-                                        Ativar
-                                    </button>
-                                @endif
-
-                                {{-- Botão Verificar E-mail --}}
-                                @if (!$client->hasVerifiedEmail())
-                                    <button wire:click="markAsVerified({{ $client->id }})"
-                                        wire:confirm="Tem certeza que deseja marcar o e-mail de {{ $client->name }} como VERIFICADO?"
-                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 font-semibold"
-                                        title="Marcar E-mail como Verificado">
-                                        Verificar E-mail
-                                    </button>
-                                @endif
-
-                                {{-- NOVO BOTÃO: Enviar Link de Reset de Senha --}}
-                                @if ($client->password && $client->hasVerifiedEmail() && !$client->provider_id) {{--
-                                    Condições para mostrar o botão --}}
-                                    <button wire:click="sendPasswordResetLink({{ $client->id }})"
-                                        wire:confirm="Tem certeza que deseja enviar um link de redefinição de senha para {{ $client->name }} ({{ $client->email }})?"
-                                        class="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200 font-semibold"
-                                        title="Enviar Link de Reset de Senha">
-                                        Resetar Senha
-                                    </button>
-                                @endif
-                            </div>
+                                </x-slot>
+                                <x-slot name="content">
+                                    <x-dropdown-link :href="route('admin.booking.create-for-client', $client)">
+                                        Novo Agendamento
+                                    </x-dropdown-link>
+                                    <x-dropdown-link :href="route('admin.clients.show', $client->id)">Ver
+                                        Detalhes</x-dropdown-link>
+                                    @if ($client->is_active)
+                                        <x-dropdown-link href="#" wire:click.prevent="toggleAccountStatus({{ $client->id }})"
+                                            wire:confirm="Tem certeza que deseja DESATIVAR a conta deste cliente?">Desativar
+                                            Conta</x-dropdown-link>
+                                    @else
+                                        <x-dropdown-link href="#" wire:click.prevent="toggleAccountStatus({{ $client->id }})"
+                                            wire:confirm="Tem certeza que deseja ATIVAR a conta deste cliente?">Ativar
+                                            Conta</x-dropdown-link>
+                                    @endif
+                                    @if (!$client->hasVerifiedEmail())
+                                        <x-dropdown-link href="#" wire:click.prevent="markAsVerified({{ $client->id }})"
+                                            wire:confirm="Tem certeza que deseja marcar o e-mail de {{ $client->name }} como VERIFICADO?">Verificar
+                                            E-mail</x-dropdown-link>
+                                    @endif
+                                    @if ($client->password && $client->hasVerifiedEmail() && !$client->provider_id)
+                                        <x-dropdown-link href="#" wire:click.prevent="sendPasswordResetLink({{ $client->id }})"
+                                            wire:confirm="Tem certeza que deseja enviar um link de redefinição de senha para {{ $client->name }}?">Resetar
+                                            Senha</x-dropdown-link>
+                                    @endif
+                                </x-slot>
+                            </x-dropdown>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7"
-                            class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-300">
-                            {{-- Mensagem atualizada para refletir busca e todos os filtros --}}
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
                             @if (empty($search) && empty($filterAccountStatus) && empty($filterEmailVerified) && empty($filterLoginType))
                                 Nenhum cliente encontrado.
                             @else
@@ -212,6 +188,7 @@
         </table>
     </div>
 
+    {{-- Paginação --}}
     @if ($clients->hasPages())
         <div class="mt-4">
             {{ $clients->links() }}

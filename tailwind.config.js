@@ -7,10 +7,6 @@ export default {
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
-        "./resources/**/*.blade.php",
-        "./resources/**/*.js",
-        "./resources/**/*.vue", // Se você usar Vue
-        "./app/Livewire/**/*.php",
     ],
 
     theme: {
@@ -18,6 +14,22 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            // ADICIONE ESTA SEÇÃO DE CORES
+            colors: {
+                primary: {
+                    '50': '#f0fdf4',
+                    '100': '#dcfce7',
+                    '200': '#bbf7d0',
+                    '300': '#86efac',
+                    '400': '#4ade80',
+                    '500': '#22c55e', // Tom principal
+                    '600': '#16a34a', // Tom para hover
+                    '700': '#15803d',
+                    '800': '#166534',
+                    '900': '#14532d',
+                    '950': '#052e16',
+                },
+            }
         },
     },
 

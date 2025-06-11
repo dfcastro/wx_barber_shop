@@ -3,51 +3,45 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Appointment; 
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+// Se o seu controller não tiver o "use Illuminate\Http\Request", não tem problema.
+// Ele não é necessário para o método index simples.
 
 class DashboardController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
     public function index()
     {
-        // Card 1: Agendamentos para Hoje (pendentes ou confirmados)
-        $appointmentsTodayCount = Appointment::whereIn('status', ['pendente', 'confirmado'])
-            ->whereDate('appointment_time', Carbon::today())
-            ->count();
-
-        // Card 2: Faturamento do Mês (soma do preço de agendamentos concluídos no mês atual)
-        $revenueThisMonth = Appointment::where('status', 'concluido')
-            ->whereMonth('appointment_time', Carbon::now()->month)
-            ->whereYear('appointment_time', Carbon::now()->year)
+        // Lógica para calcular os ganhos totais (esta parte já estava correta)
+        $totalRevenue = \App\Models\Appointment::where('payment_status', 'paid')
             ->join('services', 'appointments.service_id', '=', 'services.id')
             ->sum('services.price');
-
-        // Card 3: Total de Clientes (não-admins)
-        $totalClientsCount = User::where('is_admin', false)->count();
-
-        // Card 4: Novos Clientes (nos últimos 30 dias)
-        $newClientsCount = User::where('is_admin', false)
-            ->where('created_at', '>=', Carbon::now()->subDays(30))
-            ->count();
-            
-        // Lista: Próximos 5 Agendamentos (pendentes ou confirmados)
-        $upcomingAppointments = Appointment::whereIn('status', ['pendente', 'confirmado'])
-            ->where('appointment_time', '>=', Carbon::now())
-            ->with(['user:id,name', 'service:id,name']) // Carrega nome do cliente e do serviço para otimizar
-            ->orderBy('appointment_time', 'asc')
-            ->limit(5)
-            ->get();
-
-
-        return view('admin.dashboard', compact(
-            'appointmentsTodayCount',
-            'revenueThisMonth',
-            'totalClientsCount',
-            'newClientsCount',
-            'upcomingAppointments'
-        ));
+        
+        $totalAppointments = \App\Models\Appointment::count();
+        
+        $newClientsThisMonth = \App\Models\User::where('is_admin', false)
+                                   ->whereMonth('created_at', now()->month)
+                                   ->whereYear('created_at', now()->year)
+                                   ->count();
+    
+        $totalExpenses = \App\Models\Expense::sum('amount');
+        
+        // --- INÍCIO DA CORREÇÃO FINAL ---
+        // A consulta agora usa a coluna correta: 'appointment_time'
+        $upcomingAppointments = \App\Models\Appointment::with(['user', 'service'])
+                                            ->where('appointment_time', '>=', now())
+                                            ->orderBy('appointment_time', 'asc')
+                                            ->take(5)
+                                            ->get();
+        // --- FIM DA CORREÇÃO FINAL ---
+    
+        return view('admin.dashboard', [
+            'totalRevenue' => $totalRevenue,
+            'totalAppointments' => $totalAppointments,
+            'newClientsThisMonth' => $newClientsThisMonth,
+            'totalExpenses' => $totalExpenses,
+            'upcomingAppointments' => $upcomingAppointments,
+        ]);
     }
 }
