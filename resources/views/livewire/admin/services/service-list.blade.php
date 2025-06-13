@@ -4,7 +4,7 @@
     @endif
 
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Lista de Serviços</h1>
+        
         <x-button.create href="{{ route('admin.services.create') }}">Novo Serviço</x-button.create>
     </div>
 
@@ -17,7 +17,7 @@
 
     <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-             <thead class="bg-gray-50 dark:bg-gray-800">
+             <thead class="bg-gray-200 dark:bg-gray-800">
                 <tr>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Preço</th>

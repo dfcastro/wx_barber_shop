@@ -4,7 +4,7 @@
     @endif
 
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Períodos Bloqueados</h1>
+
         <x-button.create href="{{ route('admin.blocked-periods.create') }}">Bloquear Novo Período</x-button.create>
     </div>
 

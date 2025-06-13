@@ -1,13 +1,18 @@
 <div>
-    {{-- Título da Página e Ação Principal --}}
+    {{-- Cabeçalho com Busca e Botão de Criar --}}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
-            Lista de Clientes
-        </h1>
+        {{-- Campo de Busca (Alinhado à esquerda) --}}
+        <div class="w-full md:w-1/2 lg:w-1/3">
+            <x-text-input wire:model.live.debounce.300ms="search" type="text" class="block w-full"
+                placeholder="Buscar por nome, e-mail..." />
+        </div>
+
+        {{-- Botão de Criar (Alinhado à direita) --}}
         <x-button.create href="{{ route('admin.clients.create') }}">
             Novo Cliente
         </x-button.create>
     </div>
+
 
     {{-- Mensagens de Feedback --}}
     @if (session()->has('message'))
@@ -28,14 +33,6 @@
             {{ session('error') }}
         </div>
     @endif
-
-    {{-- Campo de Busca (Alinhado à direita) --}}
-    <div class="mb-4 flex justify-end">
-        <div class="w-full md:w-1/2 lg:w-1/3">
-            <x-text-input wire:model.live.debounce.300ms="search" type="text" class="block w-full"
-                placeholder="Buscar por nome, e-mail..." />
-        </div>
-    </div>
 
     {{-- Seção de Filtros --}}
     <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg shadow">

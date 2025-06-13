@@ -6,19 +6,11 @@
         </div>
     @endif
 
-    {{-- Cabeçalho: Apenas o Título da Página --}}
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
-            Lista de Agendamentos
-        </h1>
-        {{-- O botão foi removido daqui --}}
-    </div>
-
     {{-- Filtros e Pesquisa --}}
     <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg shadow">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <x-input-label for="search" :value="__('Buscar por Cliente')" />
+                <x-input-label for="search" :value="__('Buscar por Cliente/Serviço')" />
                 <x-text-input wire:model.live.debounce.300ms="search" id="search" class="block mt-1 w-full" type="text" name="search" />
             </div>
             <div>
@@ -31,7 +23,7 @@
                     <option value="cancelado">Cancelado</option>
                 </select>
             </div>
-             <div>
+            <div>
                 <x-input-label for="filterDate" :value="__('Filtrar por Data')" />
                 <x-text-input wire:model.live.debounce.300ms="filterDate" id="filterDate" class="block mt-1 w-full" type="date" name="filterDate" />
             </div>
@@ -53,11 +45,17 @@
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse ($appointments as $appointment)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700" wire:key="{{ $appointment->id }}">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ $appointment->user->name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ $appointment->service->name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ \Carbon\Carbon::parse($appointment->appointment_time)->format('d/m/Y H:i') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ $appointment->user?->name ?? 'Cliente Removido' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ $appointment->service?->name ?? 'Serviço Removido' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                            @if($appointment->appointment_time)
+                                {{ \Carbon\Carbon::parse($appointment->appointment_time)->format('d/m/Y H:i') }}
+                            @else
+                                Data/Hora Inválida
+                            @endif
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                                 @switch($appointment->status)
                                     @case('pendente') bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100 @break
                                     @case('confirmado') bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-100 @break
@@ -65,27 +63,41 @@
                                     @case('cancelado') bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100 @break
                                 @endswitch
                             ">
-                                {{ ucfirst($appointment->status) }}
+                                {{ __(ucfirst($appointment->status)) }}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                             <x-dropdown align="right" width="48">
-                                <x-slot name="trigger">
-                                    <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
-                                        <div>Ações</div>
-                                        <div class="ms-1"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></div>
-                                    </button>
-                                </x-slot>
-                                <x-slot name="content">
-                                    @if($appointment->status === 'pendente')
-                                        <x-dropdown-link href="#" wire:click.prevent="confirmAppointment({{ $appointment->id }})">Confirmar</x-dropdown-link>
-                                    @endif
-                                    @if($appointment->status !== 'concluido' && $appointment->status !== 'cancelado')
-                                        <x-dropdown-link href="#" wire:click.prevent="markAsCompleted({{ $appointment->id }})">Marcar como Concluído</x-dropdown-link>
-                                        <x-dropdown-link href="#" wire:click.prevent="confirmCancellation({{ $appointment->id }})">Cancelar</x-dropdown-link>
-                                    @endif
-                                </x-slot>
-                            </x-dropdown>
+                             {{-- O botão de Ações só aparece se o status não for 'concluido' ou 'cancelado' --}}
+                             @if(!in_array($appointment->status, ['concluido', 'cancelado']))
+                                <x-dropdown align="right" width="48">
+                                    <x-slot name="trigger">
+                                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
+                                            <div>Ações</div>
+                                            <div class="ms-1"><svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></div>
+                                        </button>
+                                    </x-slot>
+                                    <x-slot name="content">
+                                        {{-- Ação: APROVAR um agendamento pendente --}}
+                                        @if($appointment->status === 'pendente')
+                                            <x-dropdown-link href="#" wire:click.prevent="updateStatus({{ $appointment->id }}, 'confirmado')">
+                                                Aprovar Agendamento
+                                            </x-dropdown-link>
+                                        @endif
+
+                                        {{-- Ação: MARCAR COMO CONCLUÍDO um agendamento confirmado --}}
+                                        @if($appointment->status === 'confirmado')
+                                             <x-dropdown-link href="#" wire:click.prevent="updateStatus({{ $appointment->id }}, 'concluido')">
+                                                Marcar como Concluído
+                                             </x-dropdown-link>
+                                        @endif
+
+                                        {{-- Ação: CANCELAR um agendamento (seja pendente ou confirmado) --}}
+                                        <x-dropdown-link href="#" wire:click.prevent="updateStatus({{ $appointment->id }}, 'cancelado')" class="text-red-600 hover:bg-red-50 dark:hover:bg-red-900">
+                                            Cancelar Agendamento
+                                        </x-dropdown-link>
+                                    </x-slot>
+                                </x-dropdown>
+                             @endif
                         </td>
                     </tr>
                 @empty

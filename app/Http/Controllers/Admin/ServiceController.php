@@ -37,7 +37,30 @@ class ServiceController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        // 1. Validação dos dados brutos que chegam
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|string', // Validamos como texto por causa da máscara
+            'duration_minutes' => 'required|integer|min:1',
+        ]);
+
+        // 2. Limpeza do campo de preço para salvar no banco
+        $price = $validatedData['price'];
+        // Remove 'R$', espaços, e o ponto de milhar. Troca a vírgula por ponto decimal.
+        $priceSanitized = str_replace(['R$', ' ', '.'], '', $price);
+        $priceSanitized = str_replace(',', '.', $priceSanitized);
+
+        // 3. Criação do serviço com o preço limpo
+        Service::create([
+            'name' => $validatedData['name'],
+            'description' => $validatedData['description'],
+            'price' => (float) $priceSanitized, // Converte para número (float)
+            'duration_minutes' => $validatedData['duration_minutes'],
+        ]);
+
+        return redirect()->route('admin.services.index')
+            ->with('success', 'Serviço criado com sucesso.');
     }
 
     /**
@@ -61,10 +84,33 @@ class ServiceController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Service $service)
     {
-        //
+        // 1. Validação dos dados
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|string',
+            'duration_minutes' => 'required|integer|min:1',
+        ]);
+
+        // 2. Limpeza do campo de preço
+        $price = $validatedData['price'];
+        $priceSanitized = str_replace(['R$', ' ', '.'], '', $price);
+        $priceSanitized = str_replace(',', '.', $priceSanitized);
+
+        // 3. Atualiza o serviço com os dados validados e limpos
+        $service->update([
+            'name' => $validatedData['name'],
+            'description' => $validatedData['description'],
+            'price' => (float) $priceSanitized,
+            'duration_minutes' => $validatedData['duration_minutes'],
+        ]);
+
+        return redirect()->route('admin.services.index')
+            ->with('success', 'Serviço atualizado com sucesso.');
     }
+
 
     /**
      * Remove the specified resource from storage.

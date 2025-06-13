@@ -2,9 +2,11 @@
     <div class="space-y-8">
         {{-- Cabeçalho com Título e Filtro de Data --}}
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                Relatório Financeiro
-            </h1>
+               <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('Períodos Bloqueados (dias de folga)') }}
+        </h2>
+    </x-slot>
             <x-card>
                 <form action="{{ route('admin.financials.index') }}" method="GET">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
