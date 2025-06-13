@@ -45,6 +45,7 @@
     {{-- Opcional: Para tradução para Português --}}
     <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
     @livewireScripts
+    @stack('scripts')
 </body>
 
 </html>

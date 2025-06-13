@@ -11,13 +11,10 @@ class ServiceList extends Component
     use WithPagination;
 
     public string $search = '';
-    public string $filterStatus = '';
-
-    public bool $showDeleteModal = false;
-
-    // Propriedade para controlar o modal de confirmação
     public ?int $serviceIdToDelete = null;
 
+    // A propriedade $showDeleteModal não é mais necessária aqui.
+    
     public function render()
     {
         $query = Service::query();
@@ -29,49 +26,41 @@ class ServiceList extends Component
             });
         }
 
-        if ($this->filterStatus) {
-            $isActive = ($this->filterStatus === 'active');
-            $query->where('is_active', $isActive);
-        }
-
-        $services = $query->latest()->paginate(10);
+        $services = $query->latest('id')->paginate(10);
 
         return view('livewire.admin.services.service-list', [
             'services' => $services,
         ]);
     }
 
-    public function updatingSearch() { $this->resetPage(); }
-    public function updatingFilterStatus() { $this->resetPage(); }
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
 
     /**
-     * Prepara para a deleção: guarda o ID e define a flag para mostrar o modal.
+     * Prepara a deleção e despacha um evento para abrir o modal no frontend.
      */
     public function confirmServiceDeletion($serviceId)
     {
         $this->serviceIdToDelete = $serviceId;
-        $this->showDeleteModal = true;
+        // A MUDANÇA ESTÁ AQUI: Despachamos um evento para o navegador.
+        $this->dispatch('open-delete-modal');
     }
 
     /**
-     * Deleta o serviço e reseta as propriedades para fechar o modal.
+     * Deleta o serviço selecionado.
      */
     public function deleteService()
     {
         if ($this->serviceIdToDelete) {
-            Service::find($this->serviceIdToDelete)->delete();
-            session()->flash('message', 'Serviço deletado com sucesso!');
+            $service = Service::find($this->serviceIdToDelete);
+            if ($service) {
+                $service->delete();
+                session()->flash('message', 'Serviço deletado com sucesso!');
+            }
         }
-        $this->showDeleteModal = false;
-        $this->reset('serviceIdToDelete');
-    }
-
-    /**
-     * Função para fechar o modal sem deletar.
-     */
-    public function closeModal()
-    {
-        $this->showDeleteModal = false;
+        
         $this->reset('serviceIdToDelete');
     }
 }
