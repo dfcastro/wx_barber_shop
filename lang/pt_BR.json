@@ -270,5 +270,7 @@
     "Pending": "Pendente",
     "Confirmed": "Confirmado",
     "Completed": "Concluído",
-    "Cancelled": "Cancelado"
+    "Cancelled": "Cancelado",
+    "Clients": "Clientes",
+    "Appointments": "Agendamentos"
 }

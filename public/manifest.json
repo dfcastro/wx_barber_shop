@@ -1,0 +1,22 @@
+{
+    "name": "WX Barber Shop",
+    "short_name": "WX Barber",
+    "description": "Sistema de Agendamento para a WX Barber Shop",
+    "icons": [
+        {
+            "src": "/images/icons/icon-192x192.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "/images/icons/icon-512x512.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ],
+    "start_url": "/dashboard",
+    "display": "standalone",
+    "background_color": "#111827",
+    "theme_color": "#C0A062",
+    "scope": "/"
+}

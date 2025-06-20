@@ -61,4 +61,11 @@ class ClientController extends Controller
 
         return redirect()->route('admin.clients.index')->with('success', 'Cliente atualizado com sucesso.');
     }
+
+    public function show(User $client)
+    {
+        return view('admin.clients.show', compact('client'));
+    }
+
+   
 }

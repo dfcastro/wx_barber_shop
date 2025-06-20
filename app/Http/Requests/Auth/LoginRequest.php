@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use App\Models\User; // Adicione esta linha para importar o modelo User
 
 class LoginRequest extends FormRequest
 {
@@ -27,8 +26,9 @@ class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
+        // Alteramos a validação para esperar 'phone_number'
         return [
-            'email' => ['required', 'string', 'email'],
+            'phone_number' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -42,23 +42,18 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // 1. Limpa a máscara do número de telefone antes de tentar autenticar
+        $phoneNumber = preg_replace('/\D/', '', $this->input('phone_number'));
+
+        // 2. Tenta autenticar usando 'phone_number' em vez de 'email'
+        if (! Auth::attempt(['phone_number' => $phoneNumber, 'password' => $this->input('password')], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                // Mensagem de erro aponta para o campo correto
+                'phone_number' => trans('auth.failed'),
             ]);
         }
-
-        // >>> INÍCIO DA VERIFICAÇÃO DE CONTA ATIVA <<<
-        $user = Auth::user(); // Pega o usuário autenticado
-
-        // Se for uma instância de User (para garantir que temos o campo is_active)
-        // e a conta não estiver ativa, faz logout e lança uma exceção.
-        if ($user instanceof User && !$user->is_active) {
-            $this->logoutUserAndThrowInactiveAccountException($user);
-        }
-        // >>> FIM DA VERIFICAÇÃO DE CONTA ATIVA <<<
 
         RateLimiter::clear($this->throttleKey());
     }
@@ -79,7 +74,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'phone_number' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -91,28 +86,7 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->input('email')).'|'.$this->ip());
-    }
-
-    /**
-     * Helper method to logout user and throw inactive account exception.
-     *
-     * @param \App\Models\User $user
-     * @throws \Illuminate\Validation\ValidationException
-     */
-    protected function logoutUserAndThrowInactiveAccountException(User $user): void
-    {
-        $userId = $user->id; // Guarda o ID para o log, se necessário
-        
-        Auth::guard('web')->logout(); // Faz logout do usuário
-
-        // Limpa a sessão, mas mantém o erro flash para a próxima requisição
-        $this->session()->invalidate();
-        $this->session()->regenerateToken();
-
-        // Prepara a mensagem de erro para ser exibida na tela de login
-        throw ValidationException::withMessages([
-            'email' => __('Sua conta está desativada. Entre em contato com o suporte.'),
-        ])->redirectTo(route('login')); // Garante que o erro seja exibido na tela de login
+        // A chave de throttle agora usa o 'phone_number'
+        return Str::transliterate(Str::lower($this->input('phone_number')).'|'.$this->ip());
     }
 }
