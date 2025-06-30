@@ -10,13 +10,11 @@ jobs:
     name: Deploy app
     runs-on: ubuntu-latest
     steps:
-      # Passo 1: Pega o código do seu repositório
       - uses: actions/checkout@v3
 
-      # Passo 2: Instala e configura a ferramenta flyctl no ambiente do robô
-      - uses: superfly/fly-actions/setup-flyctl@v1
+      # CORREÇÃO: Usando a versão @master para garantir que é a mais recente
+      - uses: superfly/fly-actions/setup-flyctl@master
 
-      # Passo 3: Roda o comando de deploy usando a chave secreta
       - name: Deploy to Fly
         run: flyctl deploy --remote-only
         env:
