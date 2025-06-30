@@ -9,15 +9,20 @@ jobs:
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    # Define a chave de acesso para todos os passos deste job
     env:
-      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }} # Disponibiliza o token para todo o job
+
     steps:
       # Passo 1: Pega o código do seu repositório
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v4
+
       # Passo 2: Instala a ferramenta da Fly.io
       - uses: superfly/fly-actions/setup-flyctl@master
-      
-      # Passo 3: Executa o deploy (ele usará a chave de acesso do 'env' para se autenticar)
-      - run: flyctl deploy --remote-only
+
+      # Passo 3 (NOVO E CRUCIAL): Realiza o login no registro Docker da Fly.io
+      - name: Log in to Fly Registry
+        run: echo "${{ secrets.FLY_API_TOKEN }}" | docker login registry.fly.io -u x --password-stdin
+
+      # Passo 4: Executa o deploy, agora com a autenticação garantida
+      - name: Deploy to Fly
+        run: flyctl deploy --remote-only
