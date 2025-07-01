@@ -4,12 +4,12 @@ FROM ubuntu:jammy
 # Define o frontend como não-interativo para evitar perguntas durante a instalação
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instala todas as dependências de sistema (PHP, Nginx, Node) em uma única camada
+# Instala todas as dependências de sistema (PHP, Nginx, Node, Git, Zip) em uma única camada
 RUN apt-get update && apt-get install -y \
-    software-properties-common curl nginx supervisor \
+    software-properties-common curl nginx supervisor git zip unzip \
     && add-apt-repository ppa:ondrej/php -y \
     && apt-get update && apt-get install -y \
-    php8.2 php8.2-cli php8.2-mysql php8.2-xml php8.2-mbstring php8.2-curl php8.2-fpm \
+    php8.2 php8.2-cli php8.2-mysql php8.2-xml php8.2-mbstring php8.2-curl php8.2-fpm php8.2-zip \
     && curl -sL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs
 
