@@ -1,14 +1,12 @@
 #!/bin/sh
 
-# .fly/entrypoint.sh (Versão Final)
+# .fly/entrypoint.sh (Versão Final e Corrigida)
 set -e
 
-# Este script não precisa mais do .env.example.
-# A Fly.io injeta os segredos (como DATABASE_URL e APP_KEY)
-# diretamente como variáveis de ambiente, que o Laravel lê automaticamente.
+# Cria o diretório para o socket do PHP-FPM, se não existir.
+mkdir -p /run/php
 
 # Roda as migrations do banco de dados para garantir que a base esteja atualizada.
-# O --force é necessário para rodar em ambiente de produção.
 php artisan migrate --force
 
 # Limpa e armazena em cache a configuração para otimizar a performance.
