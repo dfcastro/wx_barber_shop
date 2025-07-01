@@ -108,7 +108,7 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth', 'verified', 'profile.completed'])->group(function () {
     // Rota para "Meus Agendamentos" do cliente
-    Route::get('/my-appointments', [ClientAppointmentController::class, 'index'])->name('client.appointments.index');
+    
     // Outras rotas do cliente...
 });
 
