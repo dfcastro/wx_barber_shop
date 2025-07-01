@@ -1,15 +1,16 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
-# Run user scripts, if they exist
-for f in /var/www/html/.fly/scripts/*.sh; do
-    # Bail out this loop if any script exits with non-zero status code
-    bash "$f" -e
-done
-chown -R www-data:www-data /var/www/html
+# .fly/entrypoint.sh
+set -e
 
-if [ $# -gt 0 ]; then
-    # If we passed a command, run it as root
-    exec "$@"
-else
-    exec supervisord -c /etc/supervisor/supervisord.conf
+# Gera a chave da aplicação se não existir
+if [ ! -f ".env" ]; then
+    cp .env.example .env
+    php artisan key:generate
 fi
+
+# Roda as migrations do banco de dados
+php artisan migrate --force
+
+# Inicia o supervisor para rodar o Nginx e o PHP
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
