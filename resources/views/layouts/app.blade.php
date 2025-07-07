@@ -46,6 +46,21 @@
     <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
     @livewireScripts
     @stack('scripts')
+    {{-- ... (resto do seu arquivo app.blade.php) ... --}}
+
+    <script>
+        // Registra o Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('Service Worker registrado com sucesso!');
+                }).catch(error => {
+                    console.log('Falha ao registrar o Service Worker:', error);
+                });
+            });
+        }
+    </script>
+</body>
 </body>
 
 </html>
