@@ -40,14 +40,6 @@
     </div>
 
     {{-- SCRIPTS DO LIVEWIRE AQUI, ANTES DE FECHAR O BODY --}}
-
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    {{-- Opcional: Para tradução para Português --}}
-    <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
-    @livewireScripts
-    @stack('scripts')
-    {{-- ... (resto do seu arquivo app.blade.php) ... --}}
-
     <script>
         // Registra o Service Worker
         if ('serviceWorker' in navigator) {
@@ -60,6 +52,14 @@
             });
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    {{-- Opcional: Para tradução para Português --}}
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
+    @livewireScripts
+    @stack('scripts')
+    {{-- ... (resto do seu arquivo app.blade.php) ... --}}
+
+
 </body>
 </body>
 

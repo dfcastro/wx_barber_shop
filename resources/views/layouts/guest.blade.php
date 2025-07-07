@@ -6,6 +6,9 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
+        
+        <link rel="manifest" href="/manifest.json">
+        <meta name="theme-color" content="#C0A062">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -13,6 +16,9 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans text-gray-900 antialiased">
+        {{-- ... O resto do seu layout de guest continua aqui ... --}}
+    </body>
+</html>
         {{-- Contêiner principal com a imagem de fundo --}}
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-900 bg-cover bg-center" style="background-image: url('{{ asset('images/barber-bg.jpg') }}')">
             {{-- Overlay escuro para melhorar a legibilidade --}}
